@@ -25,8 +25,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
   && apt-get install -y nodejs \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Poetry via pipx (as vscode user later; install globally here)
-RUN pipx install poetry --global
+# Poetry via pipx into a shared location (available to all users)
+RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
 
 # renv bootstrap
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
@@ -48,12 +48,15 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
   && touch /commandhistory/.bash_history \
   && chown -R $USERNAME /commandhistory
 
-# Set DEVCONTAINER env var for detection in CLAUDE.md and scripts
+# Environment variables (defaults; devcontainer.json containerEnv can override)
 ENV DEVCONTAINER=true
+ENV RENV_PATHS_CACHE=/home/vscode/.local/share/renv
+ENV NODE_OPTIONS=--max-old-space-size=4096
+ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
 
-# Create workspace and config directories
-RUN mkdir -p /workspace /home/vscode/.claude && \
-  chown -R vscode:vscode /workspace /home/vscode/.claude
+# Create workspace, config, and cache directories
+RUN mkdir -p /workspace /home/vscode/.claude /home/vscode/.local/share/renv && \
+  chown -R vscode:vscode /workspace /home/vscode/.claude /home/vscode/.local
 
 WORKDIR /workspace
 
