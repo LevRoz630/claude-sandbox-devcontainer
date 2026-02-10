@@ -1,0 +1,4 @@
+# Force LF endings for all shell scripts (required for Linux container execution)
+*.sh text eol=lf
+# Dockerfile should also be LF
+Dockerfile text eol=lf
