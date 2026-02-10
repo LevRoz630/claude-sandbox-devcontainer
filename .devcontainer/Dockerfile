@@ -8,7 +8,7 @@ ARG CLAUDE_CODE_VERSION=latest
 # System packages + firewall tools + R dependencies + Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
   git gh less procps sudo fzf zsh man-db unzip gnupg2 \
-  jq nano vim \
+  jq nano vim curl wget \
   # Firewall
   iptables ipset iproute2 dnsutils aggregate \
   # R base + compilation dependencies
@@ -18,12 +18,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
   # Python
   python3 python3-venv python3-pip pipx \
+  # SSH agent forwarding support
+  socat \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Node.js 20 via nodesource (base:noble may not include it)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-  && apt-get install -y nodejs \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Node.js 20 via nodesource APT repo (explicit GPG key, no curl|bash)
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+      | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+      > /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Poetry via pipx into a shared location (available to all users)
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
@@ -55,18 +60,32 @@ ENV NODE_OPTIONS=--max-old-space-size=4096
 ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
 
 # Create workspace, config, and cache directories
-RUN mkdir -p /workspace /home/vscode/.claude /home/vscode/.local/share/renv && \
-  chown -R vscode:vscode /workspace /home/vscode/.claude /home/vscode/.local
+RUN mkdir -p /workspace /home/vscode/.claude /home/vscode/.local/share/renv \
+             /home/vscode/.config/gh && \
+  chown -R vscode:vscode /workspace /home/vscode/.claude /home/vscode/.local \
+                         /home/vscode/.config/gh
 
 WORKDIR /workspace
 
 # Copy firewall + env setup scripts
+# Strip CRLF: Windows working tree may have \r despite .gitattributes eol=lf
 COPY init-firewall.sh /usr/local/bin/
 COPY setup-env.sh /usr/local/bin/
 USER root
-RUN chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh && \
-  echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/firewall && \
-  chmod 0440 /etc/sudoers.d/firewall
+RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh && \
+    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh
+
+# ============================================================================
+# SECURITY: Lock down sudo
+#
+# The base image (devcontainers/base:noble) grants vscode NOPASSWD:ALL.
+# We MUST remove that and restrict sudo to only the firewall init script.
+# Without this, Claude can run `sudo iptables -F` and disable the firewall.
+# ============================================================================
+RUN rm -f /etc/sudoers.d/vscode && \
+    echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/firewall && \
+    chmod 0440 /etc/sudoers.d/firewall
+
 USER vscode
 
 ENV HISTFILE=/commandhistory/.bash_history

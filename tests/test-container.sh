@@ -43,7 +43,7 @@ command -v Rscript >/dev/null 2>&1 && pass "Rscript available on PATH" || fail "
 command -v claude >/dev/null 2>&1 && pass "claude: $(claude --version 2>/dev/null || echo 'installed')" || fail "claude not found"
 command -v jq >/dev/null 2>&1 && pass "jq available" || fail "jq not found"
 command -v delta >/dev/null 2>&1 && pass "delta (git-delta) available" || fail "delta not found"
-command -v poetry >/dev/null 2>&1 && pass "poetry: $(poetry --version 2>/dev/null)" || skip "poetry not on PATH (may need pipx path)"
+command -v poetry >/dev/null 2>&1 && pass "poetry: $(poetry --version 2>/dev/null)" || fail "poetry not found"
 command -v iptables >/dev/null 2>&1 && pass "iptables available" || fail "iptables not found"
 command -v ipset >/dev/null 2>&1 && pass "ipset available" || fail "ipset not found"
 command -v dig >/dev/null 2>&1 && pass "dig available" || fail "dig not found"
@@ -80,6 +80,9 @@ section "4. Filesystem & Permissions"
 [[ -d /commandhistory ]] && pass "/commandhistory exists" || fail "/commandhistory missing"
 [[ -w /commandhistory/.bash_history ]] && pass "/commandhistory/.bash_history is writable" || fail "bash history not writable"
 
+[[ -d /home/vscode/.config/gh ]] && pass "/home/vscode/.config/gh exists" || fail "gh config dir missing"
+[[ -w /home/vscode/.config/gh ]] && pass "/home/vscode/.config/gh is writable" || fail "gh config dir not writable"
+
 CURRENT_USER=$(whoami)
 [[ "$CURRENT_USER" == "vscode" ]] && pass "Running as user: vscode" || fail "Running as: $CURRENT_USER (expected vscode)"
 
@@ -91,40 +94,70 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-section "5. Host Bind Mounts (readonly)"
+section "5. SECURITY: Credential Isolation"
 # ---------------------------------------------------------------------------
 
-if [[ -d /home/vscode/.ssh ]]; then
-    pass ".ssh directory is mounted"
-    if touch /home/vscode/.ssh/__test_write 2>/dev/null; then
-        rm -f /home/vscode/.ssh/__test_write
-        fail ".ssh is WRITABLE (should be readonly)"
-    else
-        pass ".ssh is readonly as expected"
-    fi
+# SSH private key must NOT be present in the container
+if [[ -f /home/vscode/.ssh/id_rsa ]]; then
+    fail "SSH private key FOUND at /home/vscode/.ssh/id_rsa (should use agent forwarding)"
+elif [[ -f /home/vscode/.ssh/id_ed25519 ]]; then
+    fail "SSH private key FOUND at /home/vscode/.ssh/id_ed25519 (should use agent forwarding)"
 else
-    skip ".ssh not mounted (host may not have .ssh dir)"
+    pass "No SSH private keys in container (agent forwarding expected)"
 fi
 
-if [[ -f /home/vscode/.gitconfig ]]; then
-    pass ".gitconfig is mounted"
-    if echo "# test" >> /home/vscode/.gitconfig 2>/dev/null; then
-        fail ".gitconfig is WRITABLE (should be readonly)"
+# gh OAuth token must NOT be present
+if [[ -f /home/vscode/.config/gh/hosts.yml ]]; then
+    if grep -q "oauth_token" /home/vscode/.config/gh/hosts.yml 2>/dev/null; then
+        fail "GitHub OAuth token FOUND in hosts.yml (should use gh auth login)"
     else
-        pass ".gitconfig is readonly as expected"
+        pass "gh hosts.yml exists but contains no oauth_token"
     fi
 else
-    skip ".gitconfig not mounted"
+    pass "No pre-existing gh hosts.yml (user will run gh auth login)"
 fi
 
-if [[ -d /home/vscode/.config/gh ]]; then
-    pass "gh config is mounted"
+# No SSH keys in /tmp
+if ls /tmp/.ssh-setup/* 2>/dev/null | head -1 | grep -q .; then
+    fail "SSH keys found copied in /tmp/.ssh-setup (security risk)"
 else
-    skip "gh config not mounted (host may not have .config/gh)"
+    pass "No SSH key copies in /tmp"
 fi
 
 # ---------------------------------------------------------------------------
-section "6. Node.js Version Check"
+section "6. SECURITY: Sudo Lockdown"
+# ---------------------------------------------------------------------------
+
+# vscode should ONLY be able to sudo the firewall script
+SUDO_LIST=$(sudo -l 2>/dev/null || true)
+if echo "$SUDO_LIST" | grep -q "NOPASSWD: ALL"; then
+    fail "vscode has NOPASSWD: ALL (sudo not locked down!)"
+else
+    pass "vscode does NOT have NOPASSWD: ALL"
+fi
+
+if echo "$SUDO_LIST" | grep -q "init-firewall.sh"; then
+    pass "vscode can sudo init-firewall.sh"
+else
+    skip "Cannot verify firewall sudoers entry"
+fi
+
+# Verify Claude cannot disable the firewall
+if sudo iptables -L >/dev/null 2>&1; then
+    fail "vscode can run 'sudo iptables' (firewall bypassable!)"
+else
+    pass "vscode CANNOT run 'sudo iptables' (firewall protected)"
+fi
+
+# Verify Claude cannot install packages
+if sudo apt-get --version >/dev/null 2>&1; then
+    fail "vscode can run 'sudo apt-get' (can install arbitrary tools!)"
+else
+    pass "vscode CANNOT run 'sudo apt-get' (system locked)"
+fi
+
+# ---------------------------------------------------------------------------
+section "7. Node.js Version Check"
 # ---------------------------------------------------------------------------
 
 NODE_MAJOR=$(node --version 2>/dev/null | cut -d'.' -f1 | tr -d 'v')
@@ -135,7 +168,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-section "7. Firewall Script Presence"
+section "8. Firewall Script Presence"
 # ---------------------------------------------------------------------------
 
 [[ -f /usr/local/bin/init-firewall.sh ]] && pass "init-firewall.sh exists" || fail "init-firewall.sh missing"
@@ -143,15 +176,8 @@ section "7. Firewall Script Presence"
 [[ -f /usr/local/bin/setup-env.sh ]] && pass "setup-env.sh exists" || fail "setup-env.sh missing"
 [[ -x /usr/local/bin/setup-env.sh ]] && pass "setup-env.sh is executable" || fail "setup-env.sh not executable"
 
-# Check sudoers entry for firewall
-if sudo -n /usr/local/bin/init-firewall.sh --help 2>/dev/null || sudo -l 2>/dev/null | grep -q init-firewall; then
-    pass "sudoers entry allows passwordless firewall execution"
-else
-    skip "Cannot verify sudoers entry (may need root)"
-fi
-
 # ---------------------------------------------------------------------------
-section "8. DNS Resolution (pre-firewall)"
+section "9. DNS Resolution (pre-firewall)"
 # ---------------------------------------------------------------------------
 
 if dig +short api.anthropic.com 2>/dev/null | head -1 | grep -qE '^[0-9]+\.'; then
@@ -164,17 +190,6 @@ if dig +short github.com 2>/dev/null | head -1 | grep -qE '^[0-9]+\.'; then
     pass "DNS resolves github.com"
 else
     fail "Cannot resolve github.com"
-fi
-
-# ---------------------------------------------------------------------------
-section "9. Git Configuration"
-# ---------------------------------------------------------------------------
-
-SAFE_DIR=$(git config --global --get-all safe.directory 2>/dev/null || true)
-if echo "$SAFE_DIR" | grep -q "/workspace"; then
-    pass "git safe.directory includes /workspace"
-else
-    skip "git safe.directory not yet configured (setup-env.sh not run)"
 fi
 
 # ---------------------------------------------------------------------------

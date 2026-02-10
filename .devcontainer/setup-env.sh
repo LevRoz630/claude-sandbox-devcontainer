@@ -3,24 +3,12 @@
 # Post-create environment setup for Claude Code devcontainer
 #
 # Runs once after the container is first created (postCreateCommand).
-# Sets up directory structure, configures SSH permissions, and prints status.
+# Sets up directory structure, checks authentication, and prints status.
 # =============================================================================
 
 set -e
 
 echo "=== Setting up container environment ==="
-
-# Fix SSH key permissions (bind mount from Windows may have wrong perms)
-if [ -d /home/vscode/.ssh ]; then
-    # Copy to a writable location since the mount is readonly
-    cp -r /home/vscode/.ssh /tmp/.ssh-setup
-    chmod 700 /tmp/.ssh-setup
-    chmod 600 /tmp/.ssh-setup/* 2>/dev/null || true
-    chmod 644 /tmp/.ssh-setup/*.pub 2>/dev/null || true
-    chmod 644 /tmp/.ssh-setup/known_hosts 2>/dev/null || true
-    chmod 644 /tmp/.ssh-setup/config 2>/dev/null || true
-    echo "  SSH keys found and permissions configured"
-fi
 
 # Ensure hooks directory exists
 mkdir -p /home/vscode/.claude/hooks
@@ -47,6 +35,32 @@ echo "  Python:  $(python3 --version 2>/dev/null || echo 'not installed')"
 echo "  Claude:  $(claude --version 2>/dev/null || echo 'not installed')"
 echo "  Git:     $(git --version 2>/dev/null || echo 'not installed')"
 echo "  Poetry:  $(poetry --version 2>/dev/null || echo 'not installed')"
+echo ""
+
+# Check SSH agent forwarding
+if [ -n "$SSH_AUTH_SOCK" ]; then
+    KEY_COUNT=$(ssh-add -l 2>/dev/null | grep -c "SHA256" || true)
+    if [ "$KEY_COUNT" -gt 0 ]; then
+        echo "SSH agent: $KEY_COUNT key(s) available via forwarding"
+    else
+        echo "WARNING: SSH agent socket exists but no keys loaded."
+        echo "  On host, run: ssh-add"
+    fi
+else
+    echo "WARNING: No SSH agent socket. Git SSH operations will not work."
+    echo "  On Windows host, ensure OpenSSH Authentication Agent service is running:"
+    echo "    Get-Service ssh-agent | Set-Service -StartupType Automatic -PassThru | Start-Service"
+    echo "    ssh-add \$env:USERPROFILE\\.ssh\\id_rsa"
+fi
+
+# Check gh authentication
+if gh auth status >/dev/null 2>&1; then
+    echo "GitHub CLI: authenticated"
+else
+    echo "WARNING: GitHub CLI not authenticated."
+    echo "  Run: gh auth login"
+fi
+
 echo ""
 echo "To start Claude Code with full permissions (safe inside container):"
 echo "  claude --dangerously-skip-permissions"

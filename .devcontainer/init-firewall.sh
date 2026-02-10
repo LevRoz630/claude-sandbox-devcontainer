@@ -125,18 +125,16 @@ for domain in "${ALLOWED_DOMAINS[@]}"; do
     done < <(echo "$ips")
 done
 
-# 7. Get host IP from default route and allow host network
+# 7. Get host gateway IP and allow ONLY that host (not the entire /24)
 HOST_IP=$(ip route | grep default | cut -d" " -f3)
 if [ -z "$HOST_IP" ]; then
     echo "ERROR: Failed to detect host IP"
     exit 1
 fi
 
-HOST_NETWORK=$(echo "$HOST_IP" | sed "s/\.[0-9]*$/.0\/24/")
-echo "Host network detected as: $HOST_NETWORK"
-
-iptables -A INPUT -s "$HOST_NETWORK" -j ACCEPT
-iptables -A OUTPUT -d "$HOST_NETWORK" -j ACCEPT
+echo "Host gateway detected as: $HOST_IP (allowing this IP only, not /24)"
+iptables -A INPUT -s "$HOST_IP" -j ACCEPT
+iptables -A OUTPUT -d "$HOST_IP" -j ACCEPT
 
 # 8. Set default policies to DROP
 iptables -P INPUT DROP
