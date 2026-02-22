@@ -24,8 +24,7 @@ section() { echo ""; echo "=== $1 ==="; }
 # Setup
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOOKS_DIR="${SCRIPT_DIR}/.claude/hooks"
+HOOKS_DIR="${HOME}/.claude/hooks"
 
 TEST_TMP=$(mktemp -d)
 trap 'rm -rf "$TEST_TMP"' EXIT
@@ -231,7 +230,8 @@ TEST_REPO=$(mktemp -d)
 git -C "$TEST_REPO" init >/dev/null 2>&1
 git -C "$TEST_REPO" config user.email "test@test.com"
 git -C "$TEST_REPO" config user.name "Test"
-git -C "$TEST_REPO" commit --allow-empty -m "init" >/dev/null 2>&1
+GIT_COMMITTER_DATE="2025-01-01T00:00:00" GIT_AUTHOR_DATE="2025-01-01T00:00:00" \
+    git -C "$TEST_REPO" commit --allow-empty -m "init" >/dev/null 2>&1
 
 # Test 12: stop_hook_active=false + git changes → allow stop
 SID="progress-test-1"

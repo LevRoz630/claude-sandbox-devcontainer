@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bash /workspace/tests/*)",
+      "Bash(bash tests/*)",
       "Bash(docker:*)",
       "Bash(git:*)",
       "Bash(gh:*)",

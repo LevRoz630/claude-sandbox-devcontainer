@@ -6,7 +6,6 @@ A devcontainer providing OS-level isolation for running Claude Code with `--dang
 ## Key Directories
 - `.devcontainer/` — Dockerfile, firewall init, env setup
 - `tests/` — Bash test suites for firewall and container validation
-- `docs/` — Design docs and research
 
 ## Stack
 - Dockerfile + devcontainer.json (no docker-compose)
@@ -22,8 +21,8 @@ A devcontainer providing OS-level isolation for running Claude Code with `--dang
 
 ## Testing
 ```bash
-bash /workspace/tests/test-container.sh   # Container validation
-bash /workspace/tests/test-firewall.sh    # Firewall validation (needs firewall active)
+bash tests/test-container.sh   # Container validation
+bash tests/test-firewall.sh    # Firewall validation (needs firewall active)
 ```
 
 ## Security Invariants (never break these)
