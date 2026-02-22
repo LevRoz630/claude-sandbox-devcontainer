@@ -93,3 +93,8 @@ git fetch
 # Workspace is isolated
 ls /home/  # Only vscode user
 ```
+
+
+## Roadmap
+
+See [open issues](https://github.com/LevRoz630/claude-sandbox-devcontainer/issues) for planned work.
