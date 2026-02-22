@@ -51,6 +51,14 @@ if ! git rev-parse HEAD >/dev/null 2>&1; then
     CHANGES=$(git status --porcelain 2>/dev/null)
 else
     CHANGES=$(git diff --stat HEAD 2>/dev/null)
+
+    # Also check for recent commits (within last 10 minutes) — a fresh commit IS progress
+    if [[ -z "$CHANGES" ]]; then
+        RECENT_COMMITS=$(git log --since="10 minutes ago" --oneline 2>/dev/null)
+        if [[ -n "$RECENT_COMMITS" ]]; then
+            CHANGES="$RECENT_COMMITS"
+        fi
+    fi
 fi
 
 if [[ -n "$CHANGES" ]]; then
