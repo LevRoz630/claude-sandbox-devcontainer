@@ -31,3 +31,37 @@ bash /workspace/tests/test-firewall.sh    # Firewall validation (needs firewall 
 - No `NOPASSWD: ALL` sudo — only allowlisted commands
 - Firewall default policy is DROP — only allowlisted domains reachable
 - Host filesystem not accessible outside /workspace
+
+## Competition / Hackathon Workflow
+
+### Context Management (IMPORTANT)
+- `/clear` between unrelated tasks — never let Feature A context pollute Feature B
+- `/compact <focus>` after exploration and after planning — exploration reads many files that clutter context
+- After 2 failed corrections: STOP, `/clear`, rewrite the prompt with what you learned
+- Use subagents for investigation — they run in separate context and return summaries
+- Monitor with `/cost`
+
+### Rewind & Checkpoints
+- Every Claude action creates a checkpoint automatically
+- `Esc Esc` or `/rewind` opens checkpoint menu — restore conversation, code, or both
+- "Summarize from here" condenses old context while preserving recent work
+- Checkpoints persist across sessions — safe to close terminal and resume later
+- IMPORTANT: checkpoints only track Claude's changes, not external processes — still commit to git
+
+### Fresh-Context Review (IMPORTANT — do not skip)
+- After completing any feature: run `/fresh-review` to get an unbiased review in an isolated context
+- Alternative: `Use a subagent with worktree isolation to review the changes in <path>`
+- Alternative: open a second terminal with `claude --worktree review`
+- Claude reviewing its own code in the same session is biased — a fresh context catches what the builder missed
+
+### Parallel Execution
+- Use `claude --worktree <name>` for parallel independent features
+- Each worktree gets its own branch and working directory — no conflicts
+- For coordinated multi-agent work: `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
+
+### Workflow Phases: Explore → Plan → Build → Review → Ship
+1. **Explore** (Plan Mode) — read code, understand patterns, use subagents for broad exploration
+2. **Plan** — detailed plan, Ctrl+G to edit in editor, then `/compact`
+3. **Build** — implement in phases, verify each, run tests
+4. **Review** — `/fresh-review` for unbiased review, fix CRITICAL/HIGH issues
+5. **Ship** — commit, PR, `/compact` to reset for next task
