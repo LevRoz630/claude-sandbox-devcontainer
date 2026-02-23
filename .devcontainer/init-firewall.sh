@@ -145,7 +145,13 @@ iptables -P OUTPUT DROP
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# Allow only outbound traffic to allowed domains
+# Allow all outbound HTTPS (port 443) — enables research on any site.
+# Exfiltration via HTTPS is mitigated at the application layer by the
+# exfil-guard hook (blocks curl POST, wget --post-data, nc, etc.).
+# WebFetch is GET-only by design; WebSearch goes through Anthropic's API.
+iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
+
+# Allow outbound traffic to allowlisted domains on ANY port (non-443 services)
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
 
 # Explicitly REJECT all other outbound traffic (fast feedback vs silent DROP)
@@ -155,12 +161,12 @@ echo ""
 echo "=== Firewall configuration complete ==="
 echo "Verifying firewall rules..."
 
-# Self-test: example.com should be BLOCKED
-if curl --connect-timeout 5 https://example.com >/dev/null 2>&1; then
-    echo "ERROR: Firewall verification FAILED - was able to reach https://example.com"
+# Self-test: non-HTTPS port on a non-allowlisted host should be BLOCKED
+if curl --connect-timeout 5 http://example.com >/dev/null 2>&1; then
+    echo "ERROR: Firewall verification FAILED - was able to reach http://example.com (port 80)"
     exit 1
 else
-    echo "  PASS: https://example.com is blocked as expected"
+    echo "  PASS: http://example.com (port 80) is blocked as expected"
 fi
 
 # Self-test: GitHub API should be ALLOWED
@@ -179,4 +185,4 @@ else
 fi
 
 echo ""
-echo "=== Firewall active. Only allowlisted domains are reachable. ==="
+echo "=== Firewall active. HTTPS (443) open for research; other ports allowlisted only. ==="

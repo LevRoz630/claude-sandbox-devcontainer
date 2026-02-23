@@ -1,0 +1,4 @@
+# Trivy false-positive suppressions
+# Files that look like secrets but aren't
+
+.env.example

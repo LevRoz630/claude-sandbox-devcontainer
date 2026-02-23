@@ -10,8 +10,89 @@ set -e
 
 echo "=== Setting up container environment ==="
 
-# Ensure hooks directory exists
+# Deploy security hooks from project repo into user-level Claude config.
+# This makes them global inside the container — they apply to ANY repo opened here.
+# Source of truth: /workspace/.claude/hooks/
 mkdir -p /home/vscode/.claude/hooks
+if [ -d /workspace/.claude/hooks ] && ls /workspace/.claude/hooks/*.sh >/dev/null 2>&1; then
+    cp /workspace/.claude/hooks/*.sh /home/vscode/.claude/hooks/
+    chmod +x /home/vscode/.claude/hooks/*.sh
+    echo "Deployed hooks: $(ls /workspace/.claude/hooks/*.sh | xargs -n1 basename | tr '\n' ' ')"
+fi
+
+# Register hooks in user-level Claude settings (global for all repos in container).
+# Only writes if no settings.json exists yet (preserves manual edits).
+if [ ! -f /home/vscode/.claude/settings.json ]; then
+    cat > /home/vscode/.claude/settings.json << 'SETTINGS'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/exfil-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/dedup-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/injection-scanner.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/failure-reset.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/failure-counter.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/progress-gate.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+SETTINGS
+    echo "Registered hooks in user-level Claude settings"
+fi
 
 # Ensure renv cache directory exists
 mkdir -p /home/vscode/.local/share/renv

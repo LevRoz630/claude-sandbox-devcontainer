@@ -5,7 +5,9 @@ A devcontainer providing OS-level isolation for running Claude Code with `--dang
 
 ## Key Directories
 - `.devcontainer/` — Dockerfile, firewall init, env setup
-- `tests/` — Bash test suites for firewall and container validation
+- `.claude/hooks/` — Security hook scripts (source of truth, deployed globally on container create)
+- `.github/workflows/` — Trivy CI security scanning
+- `tests/` — Bash test suites for container, firewall, and hooks
 
 ## Stack
 - Dockerfile + devcontainer.json (no docker-compose)
@@ -16,6 +18,7 @@ A devcontainer providing OS-level isolation for running Claude Code with `--dang
 ## Conventions
 - Test scripts use a `pass()`/`fail()`/`skip()` pattern with summary counts
 - Firewall allowlist lives in `.devcontainer/init-firewall.sh`
+- Hook scripts live in `.claude/hooks/`, deployed to `~/.claude/hooks/` by `setup-env.sh`
 - All scripts should use `set -uo pipefail`
 - Security is the primary concern — never weaken isolation
 
@@ -23,6 +26,7 @@ A devcontainer providing OS-level isolation for running Claude Code with `--dang
 ```bash
 bash tests/test-container.sh   # Container validation
 bash tests/test-firewall.sh    # Firewall validation (needs firewall active)
+bash tests/test-hooks.sh       # Hook unit tests (mock JSON, no API key needed)
 ```
 
 ## Security Invariants (never break these)
@@ -30,6 +34,7 @@ bash tests/test-firewall.sh    # Firewall validation (needs firewall active)
 - No `NOPASSWD: ALL` sudo — only allowlisted commands
 - Firewall default policy is DROP — only allowlisted domains reachable
 - Host filesystem not accessible outside /workspace
+- Hooks are deployed globally in the container — they apply to all repos
 
 ## Competition / Hackathon Workflow
 

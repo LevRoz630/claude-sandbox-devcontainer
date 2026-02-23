@@ -1,0 +1,115 @@
+name: Trivy Security Scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # Weekly Monday 8am UTC — catch newly disclosed CVEs
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build devcontainer image
+        uses: docker/build-push-action@v6
+        with:
+          context: .devcontainer
+          file: .devcontainer/Dockerfile
+          push: false
+          load: true
+          tags: devcontainer-sandbox:scan
+          build-args: |
+            TZ=UTC
+            CLAUDE_CODE_VERSION=latest
+            GIT_DELTA_VERSION=0.18.2
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Image vulnerability scan (OS packages + language deps) ──
+      - name: Trivy image scan (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: devcontainer-sandbox:scan
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Upload image scan to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+      # ── Fail on fixable CRITICAL vulnerabilities ──
+      - name: Trivy image scan (fail on fixable CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: devcontainer-sandbox:scan
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          vuln-type: os,library
+          exit-code: "1"
+
+      # ── Dockerfile misconfiguration scan ──
+      - name: Trivy Dockerfile misconfig scan (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          scan-type: config
+          scan-ref: .devcontainer
+          format: sarif
+          output: trivy-config.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload config scan to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      # ── License scan (flag GPL/AGPL in dependencies) ──
+      - name: Trivy license scan
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          image-ref: devcontainer-sandbox:scan
+          scanners: license
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      # ── Secret scan across the repo ──
+      - name: Trivy secret scan (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          format: sarif
+          output: trivy-secrets.sarif
+
+      - name: Upload secret scan to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
