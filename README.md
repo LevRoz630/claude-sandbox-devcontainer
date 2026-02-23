@@ -4,11 +4,27 @@ A devcontainer that sandboxes [Claude Code](https://docs.anthropic.com/en/docs/c
 
 The container provides OS-level isolation: an allowlist-only firewall, locked-down sudo, no host credentials, and a set of security hooks that catch exfiltration attempts and prompt injection at the application layer.
 
+## Prerequisites
+
+- **Docker Desktop** (or compatible runtime like Podman/Rancher Desktop)
+- **VS Code** with the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
+- **Git** configured with `user.name` and `user.email` in `~/.gitconfig`
+- **SSH agent** running on the host with your keys loaded:
+  - **Windows:** Enable the OpenSSH Authentication Agent service, then `ssh-add`
+  - **Mac/Linux:** Typically running by default; verify with `ssh-add -l`
+- **Anthropic API key** — needed for Claude Code to function. Either:
+  - Set `ANTHROPIC_API_KEY` as a host environment variable, or
+  - Run `claude login` inside the container on first use
+
 ## Getting started
 
 1. Clone this repo (or copy `.devcontainer/` and `.claude/` into your own project)
 2. Open in VS Code → Command Palette → **Dev Containers: Reopen in Container**
 3. Once built, run `claude --dangerously-skip-permissions`
+4. On first run inside the container:
+   - Authenticate Claude Code: `claude login` (or set `ANTHROPIC_API_KEY` on your host)
+   - Authenticate GitHub CLI: `gh auth login` (if you need PR/issue access)
+5. Verify the setup: `bash tests/test-container.sh`
 
 ## MCP servers
 
@@ -23,6 +39,27 @@ MCP servers (Confluence, Bitbucket, GitHub) work inside the container automatica
 Only servers whose credentials are present get added. The config is only generated once — it won't overwrite your edits.
 
 HTTPS (443) is open, so no firewall changes are needed for MCP servers.
+
+## Environment variables
+
+Set these on your host before building the container. They're passed through via `devcontainer.json`.
+
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `ANTHROPIC_API_KEY` | Claude Code authentication (alternative: `claude login`) | Yes |
+| `ATLASSIAN_SITE_NAME` | Confluence/Jira site (e.g. `mycompany.atlassian.net`) | For Confluence MCP |
+| `ATLASSIAN_USER_EMAIL` | Atlassian account email | For Confluence MCP |
+| `ATLASSIAN_API_TOKEN` | Atlassian API token | For Confluence MCP |
+| `ATLASSIAN_BITBUCKET_USERNAME` | Bitbucket username | For Bitbucket MCP |
+| `ATLASSIAN_BITBUCKET_APP_PASSWORD` | Bitbucket app password | For Bitbucket MCP |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub PAT (for MCP server, not `gh` CLI) | For GitHub MCP |
+| `FIREWALL_EXTRA_DOMAINS` | Space-separated domains to add to firewall allowlist | No |
+| `DNS_FILTER_PRIMARY` | DNS filtering provider (`auto`, IP, or `none`) | No |
+| `TZ` | Timezone (default: `Europe/London`) | No |
+
+How to set them:
+- **Windows:** System Properties → Environment Variables, or `setx VAR value`
+- **Mac/Linux:** Add `export VAR=value` to `~/.bashrc` or `~/.zshrc`
 
 ## What's inside
 
@@ -42,6 +79,8 @@ HTTPS (443) is open, so no firewall changes are needed for MCP servers.
 | `progress-gate.sh` | Stop | Blocks stop if no git progress detected |
 
 Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` on container creation by `setup-env.sh`.
+
+**Customization:** To remove languages you don't need (e.g. R), delete the corresponding lines from `.devcontainer/Dockerfile` and rebuild.
 
 ## Security model
 
@@ -68,6 +107,14 @@ Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` o
 | gh config | Docker volume | GitHub CLI auth (`gh auth login`) |
 
 SSH keys are **not** mounted — agent forwarding is used instead.
+
+## Platform notes
+
+**Windows:** The `.gitconfig` mount uses `%USERPROFILE%\.gitconfig`. SSH agent forwarding requires the OpenSSH Authentication Agent service to be running (`Get-Service ssh-agent` in PowerShell).
+
+**Mac/Linux:** Change the `.gitconfig` mount in `devcontainer.json` from:
+`source=${localEnv:USERPROFILE}\\.gitconfig` → `source=${localEnv:HOME}/.gitconfig`
+SSH agent forwarding works out of the box on most systems.
 
 ## Network policy
 
