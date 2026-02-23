@@ -2,3 +2,5 @@ nul
 tmpclaude-*
 .env
 *.local.json
+.mcp.json
+*.txt

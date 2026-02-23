@@ -55,7 +55,15 @@
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
     "RENV_PATHS_CACHE": "/home/vscode/.local/share/renv",
-    "DEVCONTAINER": "true"
+    "DEVCONTAINER": "true",
+    "ATLASSIAN_SITE_NAME": "${localEnv:ATLASSIAN_SITE_NAME}",
+    "ATLASSIAN_USER_EMAIL": "${localEnv:ATLASSIAN_USER_EMAIL}",
+    "ATLASSIAN_API_TOKEN": "${localEnv:ATLASSIAN_API_TOKEN}",
+    "ATLASSIAN_BITBUCKET_USERNAME": "${localEnv:ATLASSIAN_BITBUCKET_USERNAME}",
+    "ATLASSIAN_BITBUCKET_APP_PASSWORD": "${localEnv:ATLASSIAN_BITBUCKET_APP_PASSWORD}",
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}",
+    "FIREWALL_EXTRA_DOMAINS": "${localEnv:FIREWALL_EXTRA_DOMAINS}",
+    "DNS_FILTER_PRIMARY": "${localEnv:DNS_FILTER_PRIMARY}"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",

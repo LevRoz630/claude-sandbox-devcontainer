@@ -81,6 +81,70 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
 SETTINGS
 fi
 
+# Generate MCP config from env vars (only if no .mcp.json exists yet)
+MCP_CONFIG="/home/vscode/.claude/.mcp.json"
+if [ ! -f "$MCP_CONFIG" ]; then
+    MCP_JSON='{"mcpServers":{}}'
+    MCP_SERVERS=""
+
+    if [ -n "${ATLASSIAN_SITE_NAME:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ]; then
+        MCP_JSON=$(echo "$MCP_JSON" | jq \
+            --arg site "$ATLASSIAN_SITE_NAME" \
+            --arg email "${ATLASSIAN_USER_EMAIL:-}" \
+            --arg token "$ATLASSIAN_API_TOKEN" \
+            '.mcpServers.atlassian = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@anthropic/mcp-atlassian"],
+                "env": {
+                    "ATLASSIAN_SITE_NAME": $site,
+                    "ATLASSIAN_USER_EMAIL": $email,
+                    "ATLASSIAN_API_TOKEN": $token
+                }
+            }')
+        MCP_SERVERS="$MCP_SERVERS confluence"
+    fi
+
+    if [ -n "${ATLASSIAN_BITBUCKET_USERNAME:-}" ] && [ -n "${ATLASSIAN_BITBUCKET_APP_PASSWORD:-}" ]; then
+        MCP_JSON=$(echo "$MCP_JSON" | jq \
+            --arg user "$ATLASSIAN_BITBUCKET_USERNAME" \
+            --arg pass "$ATLASSIAN_BITBUCKET_APP_PASSWORD" \
+            '.mcpServers.bitbucket = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@anthropic/mcp-atlassian"],
+                "env": {
+                    "ATLASSIAN_BITBUCKET_USERNAME": $user,
+                    "ATLASSIAN_BITBUCKET_APP_PASSWORD": $pass
+                }
+            }')
+        MCP_SERVERS="$MCP_SERVERS bitbucket"
+    fi
+
+    if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
+        MCP_JSON=$(echo "$MCP_JSON" | jq \
+            --arg token "$GITHUB_PERSONAL_ACCESS_TOKEN" \
+            '.mcpServers.github = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-github"],
+                "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": $token
+                }
+            }')
+        MCP_SERVERS="$MCP_SERVERS github"
+    fi
+
+    if [ -n "$MCP_SERVERS" ]; then
+        echo "$MCP_JSON" | jq . > "$MCP_CONFIG"
+        echo "MCP servers configured:$MCP_SERVERS"
+    else
+        echo "MCP servers: none (set env vars on host to enable — see README)"
+    fi
+else
+    echo "MCP config: using existing $MCP_CONFIG"
+fi
+
 mkdir -p /home/vscode/.local/share/renv
 git config --global --add safe.directory /workspace
 

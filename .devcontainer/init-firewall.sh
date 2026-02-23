@@ -17,6 +17,12 @@ iptables -t mangle -F
 iptables -t mangle -X
 ipset destroy allowed-domains 2>/dev/null || true
 
+# Fail-closed: set DROP policies immediately so any mid-script failure
+# leaves the container locked down rather than wide open
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
 # Restore Docker DNS
 if [ -n "$DOCKER_DNS_RULES" ]; then
     iptables -t nat -N DOCKER_OUTPUT 2>/dev/null || true
@@ -24,13 +30,55 @@ if [ -n "$DOCKER_DNS_RULES" ]; then
     echo "$DOCKER_DNS_RULES" | xargs -L 1 iptables -t nat
 fi
 
-# Allow DNS, SSH, localhost
+# Allow traffic needed during setup (DNS resolution, GitHub API fetch, etc.)
+# These rules stay in the final config — later rules append after them.
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
 iptables -A INPUT -p udp --sport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 22 -j ACCEPT
 iptables -A INPUT -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
+
+# DNS-based threat filtering (auto-detect)
+DNS_PRIMARY="${DNS_FILTER_PRIMARY:-auto}"
+if [ "$DNS_PRIMARY" = "auto" ]; then
+    if dig +short +timeout=3 github.com @9.9.9.9 >/dev/null 2>&1; then
+        DNS_PRIMARY="9.9.9.9"
+        echo "DNS filtering: enabled (Quad9 reachable)"
+    else
+        DNS_PRIMARY=""
+        echo "DNS filtering: skipped (Quad9 unreachable — corporate network?)"
+    fi
+elif [ "$DNS_PRIMARY" = "none" ]; then
+    DNS_PRIMARY=""
+    echo "DNS filtering: disabled (DNS_FILTER_PRIMARY=none)"
+else
+    if [[ ! "$DNS_PRIMARY" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo "ERROR: DNS_FILTER_PRIMARY='$DNS_PRIMARY' is not a valid IPv4 address"
+        exit 1
+    fi
+    echo "DNS filtering: using $DNS_PRIMARY"
+fi
+
+if [ -n "$DNS_PRIMARY" ]; then
+    # DNAT catches explicit queries to external DNS servers (e.g. dig @8.8.8.8)
+    iptables -t nat -A OUTPUT -p udp --dport 53 ! -d 127.0.0.11 -j DNAT --to-destination "${DNS_PRIMARY}:53"
+    iptables -t nat -A OUTPUT -p tcp --dport 53 ! -d 127.0.0.11 -j DNAT --to-destination "${DNS_PRIMARY}:53"
+
+    # Point the system resolver at the filtering DNS so standard resolution
+    # (curl, wget, apt, etc. → /etc/resolv.conf → 127.0.0.11 → upstream)
+    # also goes through the filtering provider
+    cp /etc/resolv.conf /etc/resolv.conf.bak
+    {
+        echo "# DNS filtering active — managed by init-firewall.sh"
+        echo "nameserver $DNS_PRIMARY"
+        # Keep Docker DNS as fallback for container-internal names
+        echo "nameserver 127.0.0.11"
+    } > /etc/resolv.conf
+fi
 
 ipset create allowed-domains hash:net
 
@@ -57,7 +105,6 @@ done < <(echo "$gh_ranges" | jq -r '(.web + .api + .git)[]' | aggregate -q)
 ALLOWED_DOMAINS=(
     "api.anthropic.com"
     "statsig.anthropic.com"
-    "statsig.com"
     "sentry.io"
     "registry.npmjs.org"
     "cloud.r-project.org"
@@ -66,12 +113,17 @@ ALLOWED_DOMAINS=(
     "files.pythonhosted.org"
     "bitbucket.org"
     "api.bitbucket.org"
-    "enaborea.atlassian.net"
-    "api.weather.com"
     "update.code.visualstudio.com"
     "marketplace.visualstudio.com"
     "vscode.blob.core.windows.net"
 )
+
+# User-defined extra domains (space-separated env var)
+if [ -n "${FIREWALL_EXTRA_DOMAINS:-}" ]; then
+    for domain in $FIREWALL_EXTRA_DOMAINS; do
+        ALLOWED_DOMAINS+=("$domain")
+    done
+fi
 
 for domain in "${ALLOWED_DOMAINS[@]}"; do
     ips=$(dig +noall +answer A "$domain" | awk '$4 == "A" {print $5}')
@@ -97,13 +149,7 @@ fi
 iptables -A INPUT -s "$HOST_IP" -j ACCEPT
 iptables -A OUTPUT -d "$HOST_IP" -j ACCEPT
 
-# Default DROP, then allow established + HTTPS + allowlisted
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
-iptables -P OUTPUT DROP
-iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
+# Final rules: allowlisted IPs + reject everything else (DROP policies set above)
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
 iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited
 

@@ -10,6 +10,20 @@ The container provides OS-level isolation: an allowlist-only firewall, locked-do
 2. Open in VS Code → Command Palette → **Dev Containers: Reopen in Container**
 3. Once built, run `claude --dangerously-skip-permissions`
 
+## MCP servers
+
+MCP servers (Confluence, Bitbucket, GitHub) work inside the container automatically — set the env vars on your host and they get passed through on container build. `setup-env.sh` generates `~/.claude/.mcp.json` from them.
+
+| Server | Required env vars |
+|--------|-------------------|
+| Confluence | `ATLASSIAN_SITE_NAME`, `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_API_TOKEN` |
+| Bitbucket | `ATLASSIAN_BITBUCKET_USERNAME`, `ATLASSIAN_BITBUCKET_APP_PASSWORD` |
+| GitHub | `GITHUB_PERSONAL_ACCESS_TOKEN` |
+
+Only servers whose credentials are present get added. The config is only generated once — it won't overwrite your edits.
+
+HTTPS (443) is open, so no firewall changes are needed for MCP servers.
+
 ## What's inside
 
 **Languages & tools:** R 4.x with renv, Node 20, Python 3 with Poetry, Claude Code, Git, gh CLI, git-delta, jq, fzf.
@@ -59,7 +73,17 @@ SSH keys are **not** mounted — agent forwarding is used instead.
 
 HTTPS (443) is open broadly so Claude can research anything. Exfiltration over HTTPS is blocked at the application layer by the exfil-guard hook (no `curl -d`, no `wget --post-data`, no `nc`). Non-HTTPS traffic is limited to the allowlist.
 
-Allowlisted domains: `api.anthropic.com`, `statsig.anthropic.com`, `sentry.io`, `registry.npmjs.org`, `cloud.r-project.org`, `packagemanager.posit.co`, `pypi.org`, `files.pythonhosted.org`, `github.com`, `bitbucket.org`, `enaborea.atlassian.net`, `api.weather.com`, and VS Code update servers.
+Allowlisted domains: `api.anthropic.com`, `statsig.anthropic.com`, `sentry.io`, `registry.npmjs.org`, `cloud.r-project.org`, `packagemanager.posit.co`, `pypi.org`, `files.pythonhosted.org`, `github.com`, `bitbucket.org`, and VS Code update servers.
+
+To add custom non-HTTPS domains, set `FIREWALL_EXTRA_DOMAINS` on the host (space-separated list). They'll be resolved and added to the allowlist on container start.
+
+**DNS filtering:** By default, the container auto-detects whether it can reach Quad9 (9.9.9.9). If reachable, the system resolver (`/etc/resolv.conf`) is pointed at Quad9 and a DNAT rule redirects any explicit external DNS queries there too — so all DNS resolution goes through Quad9's malware/phishing/C2 blocklist. If unreachable (e.g., corporate network blocking external DNS), filtering is skipped and the network's default DNS is used.
+
+Override with `DNS_FILTER_PRIMARY`:
+- Unset (default): auto-detect
+- `9.9.9.9`: always use Quad9
+- `1.1.1.2`: use Cloudflare malware filtering
+- `none`: disable DNS filtering
 
 ## Verification
 

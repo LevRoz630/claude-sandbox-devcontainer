@@ -18,8 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
   # Python
   python3 python3-venv python3-pip pipx \
-  # SSH agent forwarding support
-  socat \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Node.js 20 via nodesource APT repo (explicit GPG key, no curl|bash)

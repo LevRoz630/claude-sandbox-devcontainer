@@ -2,11 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(bash tests/*)",
-      "Bash(docker:*)",
       "Bash(git:*)",
       "Bash(gh:*)",
-      "Bash(iptables -L:*)",
-      "Bash(ipset list:*)",
       "Bash(curl:*)",
       "Bash(dig:*)"
     ]

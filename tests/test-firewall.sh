@@ -1,5 +1,7 @@
 #!/bin/bash
 # Firewall validation tests. Run after init-firewall.sh inside the container.
+# Tests use network behavior (curl/dig), not sudo iptables, because sudoers
+# only allows init-firewall.sh.
 set -uo pipefail
 
 PASS=0; FAIL=0; SKIP=0
@@ -8,40 +10,37 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 skip() { echo "  SKIP: $1"; SKIP=$((SKIP + 1)); }
 section() { echo ""; echo "=== $1 ==="; }
 
-section "1. Firewall Rules Active"
+section "1. Firewall Active (behavioral check)"
 
-RULE_COUNT=$(sudo iptables -L OUTPUT -n 2>/dev/null | wc -l)
-if [[ "$RULE_COUNT" -gt 3 ]]; then
-    pass "iptables OUTPUT chain has rules ($RULE_COUNT lines)"
+# If HTTP (port 80) is blocked and HTTPS works, the firewall is running.
+# Without the firewall, both would succeed.
+if curl --connect-timeout 3 -s "http://example.com" >/dev/null 2>&1; then
+    fail "HTTP (port 80) is open — firewall may not be running"
+    echo ""
+    echo "Results: $PASS passed, $FAIL failed, $SKIP skipped (ABORTED)"
+    exit 1
 else
-    fail "iptables OUTPUT chain appears empty (run init-firewall.sh first)"
+    pass "HTTP (port 80) is blocked"
+fi
+
+if curl --connect-timeout 5 -s "https://api.github.com/zen" >/dev/null 2>&1; then
+    pass "HTTPS (port 443) works — firewall is active and allowing HTTPS"
+else
+    fail "HTTPS is also blocked — firewall may be misconfigured or network is down"
     echo ""
     echo "Results: $PASS passed, $FAIL failed, $SKIP skipped (ABORTED)"
     exit 1
 fi
 
-INPUT_POLICY=$(sudo iptables -L INPUT 2>/dev/null | head -1 | grep -o 'policy [A-Z]*' | awk '{print $2}')
-OUTPUT_POLICY=$(sudo iptables -L OUTPUT 2>/dev/null | head -1 | grep -o 'policy [A-Z]*' | awk '{print $2}')
-FORWARD_POLICY=$(sudo iptables -L FORWARD 2>/dev/null | head -1 | grep -o 'policy [A-Z]*' | awk '{print $2}')
+section "2. Blocked Traffic (non-HTTPS ports)"
 
-[[ "$INPUT_POLICY" == "DROP" ]] && pass "INPUT policy is DROP" || fail "INPUT policy is $INPUT_POLICY (expected DROP)"
-[[ "$OUTPUT_POLICY" == "DROP" ]] && pass "OUTPUT policy is DROP" || fail "OUTPUT policy is $OUTPUT_POLICY (expected DROP)"
-[[ "$FORWARD_POLICY" == "DROP" ]] && pass "FORWARD policy is DROP" || fail "FORWARD policy is $FORWARD_POLICY (expected DROP)"
-
-if sudo ipset list allowed-domains >/dev/null 2>&1; then
-    IPSET_SIZE=$(sudo ipset list allowed-domains 2>/dev/null | grep "Number of entries" | awk '{print $NF}')
-    pass "ipset 'allowed-domains' exists with $IPSET_SIZE entries"
-else
-    fail "ipset 'allowed-domains' not found"
-fi
-
-section "2. Blocked Destinations"
-
+# HTTPS (443) is open to all domains by design, so we test HTTP (port 80)
+# which should be blocked for everything.
 for domain in example.com evil.com google.com facebook.com aws.amazon.com; do
-    if curl --connect-timeout 3 -s "https://$domain" >/dev/null 2>&1; then
-        fail "$domain is reachable (should be blocked)"
+    if curl --connect-timeout 3 -s "http://$domain" >/dev/null 2>&1; then
+        fail "$domain reachable on HTTP (port 80 should be blocked)"
     else
-        pass "$domain is blocked"
+        pass "$domain blocked on HTTP (port 80)"
     fi
 done
 
@@ -57,6 +56,16 @@ done
 section "4. DNS"
 
 dig +short github.com 2>/dev/null | head -1 | grep -qE '^[0-9]+\.' && pass "DNS resolution works" || fail "DNS resolution broken"
+
+section "4b. DNS Filtering"
+
+# Check if /etc/resolv.conf points to a known filtering DNS (set by init-firewall.sh)
+FILTERING_DNS=$(grep -oE '^nameserver (9\.9\.9\.9|1\.1\.1\.2|1\.0\.0\.2)' /etc/resolv.conf 2>/dev/null | head -1 | awk '{print $2}')
+if [[ -n "$FILTERING_DNS" ]]; then
+    pass "DNS filtering active (resolv.conf → $FILTERING_DNS)"
+else
+    skip "DNS filtering not active (corporate network or disabled)"
+fi
 
 section "5. Localhost"
 
