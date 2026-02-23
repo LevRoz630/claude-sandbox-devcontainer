@@ -13,9 +13,7 @@
     "--cap-add=NET_RAW"
   ],
   "features": {
-    // SSH agent forwarding — keys stay on host, only the agent socket is shared.
-    // No private key files enter the container.
-    // Requires Windows OpenSSH Agent service to be running on the host.
+    // SSH agent forwarding (keys stay on host, requires OpenSSH Agent on Windows)
     "ghcr.io/devcontainers/features/sshd:1": {}
   },
   "customizations": {
@@ -50,9 +48,7 @@
     "source=claude-renv-cache-${devcontainerId},target=/home/vscode/.local/share/renv,type=volume",
     "source=claude-gh-config-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
 
-    // SECURITY: .gitconfig is readonly and contains only user name/email.
-    // SSH keys are NOT mounted — use SSH agent forwarding instead.
-    // gh config is NOT mounted — use `gh auth login` inside the container.
+    // .gitconfig readonly (name/email only); SSH via agent forwarding; gh via `gh auth login`
     "source=${localEnv:USERPROFILE}\\.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
   ],
   "containerEnv": {

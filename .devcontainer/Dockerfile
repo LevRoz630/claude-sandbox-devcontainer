@@ -75,13 +75,7 @@ USER root
 RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh && \
     chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh
 
-# ============================================================================
-# SECURITY: Lock down sudo
-#
-# The base image (devcontainers/base:noble) grants vscode NOPASSWD:ALL.
-# We MUST remove that and restrict sudo to only the firewall init script.
-# Without this, Claude can run `sudo iptables -F` and disable the firewall.
-# ============================================================================
+# Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall only
 RUN rm -f /etc/sudoers.d/vscode && \
     echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/firewall && \
     chmod 0440 /etc/sudoers.d/firewall
