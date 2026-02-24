@@ -19,7 +19,8 @@ Devcontainer for running Claude Code with `--dangerously-skip-permissions`. Ubun
 - Tests use `pass()`/`fail()`/`skip()` with summary counts
 - Firewall allowlist in `.devcontainer/init-firewall.sh`
 - Hooks in `.claude/hooks/`, deployed to `~/.claude/hooks/` by `setup-env.sh`
-- Credentials: 1Password → env vars → skip (see `setup-1password.sh`); interactive signin via `setup-1password` command, op config bind-mounted from host
+- Credentials: 1Password → env vars → skip (see `setup-1password.sh`); interactive signin via `setup-1password` command, op config in Docker volume
+- MCP servers registered via `claude mcp add-json --scope user` by `setup-env.sh`
 - All scripts use `set -uo pipefail`
 
 ## Testing

@@ -109,7 +109,6 @@ for server in $MCP_MANAGED; do
     claude mcp remove "$server" 2>/dev/null || true
 done
 
-# Clean up old config locations (pre-fix leftovers with plaintext secrets)
 rm -f /home/vscode/.claude/.mcp.json
 
 if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
