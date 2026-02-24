@@ -95,6 +95,7 @@ else
     pass "vscode does NOT have NOPASSWD: ALL"
 fi
 echo "$SUDO_LIST" | grep -q "init-firewall.sh" && pass "vscode can sudo init-firewall.sh" || skip "Cannot verify firewall sudoers entry"
+echo "$SUDO_LIST" | grep -q "chown.*vscode.*\.config/op" && pass "vscode can sudo chown op config dir" || skip "Cannot verify op chown sudoers entry"
 
 if sudo iptables -L >/dev/null 2>&1; then
     fail "vscode can run 'sudo iptables' (firewall bypassable!)"

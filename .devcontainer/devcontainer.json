@@ -47,6 +47,7 @@
     "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     "source=claude-renv-cache-${devcontainerId},target=/home/vscode/.local/share/renv,type=volume",
     "source=claude-gh-config-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    // 1Password config: Docker volume (bind mounts from Windows have 777 perms, op CLI rejects them)
     "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
 
     // .gitconfig readonly (name/email only); SSH via agent forwarding; gh via `gh auth login`
@@ -71,7 +72,8 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "initializeCommand": [],
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && bash /usr/local/bin/setup-1password.sh || true",
   "postCreateCommand": "bash /usr/local/bin/setup-env.sh",
   "waitFor": "postStartCommand"
 }

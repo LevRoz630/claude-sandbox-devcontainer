@@ -80,11 +80,16 @@ COPY setup-env.sh /usr/local/bin/
 COPY setup-1password.sh /usr/local/bin/
 USER root
 RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh && \
-    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh
+    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh && \
+    printf '#!/bin/bash\nexec /usr/local/bin/setup-1password.sh --interactive "$@"\n' > /usr/local/bin/setup-1password && \
+    chmod +x /usr/local/bin/setup-1password
 
-# Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall only
+# Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall + op config ownership fix
 RUN rm -f /etc/sudoers.d/vscode && \
-    echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh, /etc/init.d/ssh start" > /etc/sudoers.d/firewall && \
+    printf '%s\n' \
+      "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh, /etc/init.d/ssh start" \
+      "vscode ALL=(root) NOPASSWD: /usr/bin/chown -R vscode\:vscode /home/vscode/.config/op" \
+    > /etc/sudoers.d/firewall && \
     chmod 0440 /etc/sudoers.d/firewall
 
 USER vscode
@@ -92,3 +97,6 @@ USER vscode
 ENV HISTFILE=/commandhistory/.bash_history
 ENV EDITOR=nano
 ENV VISUAL=nano
+
+# Alias: `cc` launches Claude Code in permissive mode (the container IS the sandbox)
+RUN echo "alias cc='claude --dangerously-skip-permissions'" >> /home/vscode/.bashrc

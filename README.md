@@ -9,13 +9,14 @@ The container provides OS-level isolation: an allowlist-only firewall, locked-do
 - **Docker Desktop** (or compatible runtime like Podman/Rancher Desktop)
 - **VS Code** with the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
 - **Git** configured with `user.name` and `user.email` in `~/.gitconfig`
-- **SSH agent** running on the host with your keys loaded:
-  - **Windows:** Enable the OpenSSH Authentication Agent service, then `ssh-add`
-  - **Mac/Linux:** Typically running by default; verify with `ssh-add -l`
-- **Anthropic API key** — needed for Claude Code to function. Options:
-  - Use 1Password (see [Credentials](#credentials) below), or
+- **Claude Code authentication** (one of):
+  - Run `claude login` inside the container (OAuth, no API key needed), or
   - Set `ANTHROPIC_API_KEY` as a host environment variable, or
-  - Run `claude login` inside the container on first use
+  - Store it in 1Password (see [Credentials](#credentials) below)
+- **SSH keys** (optional, for git over SSH) — three options:
+  - **1Password** (recommended): Store keys in the vault; they're loaded into an in-container agent automatically (no host admin needed)
+  - **Host agent forwarding**: Requires OpenSSH Agent running on the host (Windows: `Get-Service ssh-agent`; Mac/Linux: usually running by default)
+  - **HTTPS only**: Skip SSH entirely — use token-based HTTPS for GitHub/Bitbucket (configured automatically from env vars or 1Password)
 
 ## Getting started
 
@@ -24,10 +25,10 @@ The container provides OS-level isolation: an allowlist-only firewall, locked-do
 1. Clone this repo (or copy `.devcontainer/` and `.claude/` into your own project)
 2. Create a `.env` file in the project root with your credentials (see [Environment variables](#environment-variables))
 3. Open in VS Code → Command Palette → **Dev Containers: Reopen in Container**
-4. Once built, run `claude --dangerously-skip-permissions`
+4. Once built, run `cc` (alias for `claude --dangerously-skip-permissions`)
 5. On first run inside the container:
-   - Authenticate Claude Code: `claude login` (or set `ANTHROPIC_API_KEY` on your host)
-   - Authenticate GitHub CLI: `gh auth login` (if you need PR/issue access)
+   - Set up credentials: `setup-1password` (if using 1Password), or `claude login` (OAuth)
+   - Authenticate GitHub CLI: `gh auth login` (if you need PR/issue access, and not using 1Password)
 6. Verify the setup: `bash tests/test-container.sh`
 
 ### CLI
@@ -52,9 +53,15 @@ Credentials (API keys, tokens) can come from three sources. The container checks
 
 The container ships with the [1Password CLI](https://developer.1password.com/docs/cli/) pre-installed. Two auth modes:
 
-**Service account (headless / CI):** Set `OP_SERVICE_ACCOUNT_TOKEN` on the host. Authentication is automatic, no interaction needed.
+**Service account (headless / CI / SSO accounts):** Set `OP_SERVICE_ACCOUNT_TOKEN` on the host. Authentication is automatic, no interaction needed. **This is the only option for SSO accounts** (Microsoft, Google, Okta) because SSO signin requires the 1Password desktop app, which isn't available inside the container. Create a service account at your 1Password admin console → Integrations → [Service Accounts](https://developer.1password.com/docs/service-accounts/get-started/).
 
-**Interactive (personal vault):** On first container create, you'll see instructions to add your 1Password account. After that, account metadata is persisted in a Docker volume (`~/.config/op`), so subsequent starts only need your master password.
+**Interactive (master-password accounts):** Open a terminal in the container and run `setup-1password`. The command walks you through setup:
+
+- **First time:** Prompts for auth method (master password vs SSO), then guided `op account add` with sign-in address, email, secret key, and master password
+- **Subsequent starts:** Prompts only for your master password (account config persists in a Docker volume)
+- **During container build** (non-interactive): Exits gracefully with a reminder to run `setup-1password` in a terminal
+
+Account metadata is stored in a Docker volume (`~/.config/op` inside the container), so it survives container rebuilds. (A bind mount from the host was removed because Windows mounts have `777` permissions which the `op` CLI rejects.)
 
 To set it up:
 
@@ -75,7 +82,31 @@ To set it up:
    op item create --vault DevContainer --category="Secure Note" --title="SSH Key Bitbucket" "private_key[concealed]=$(Get-Content -Raw $HOME\.ssh\id_rsa)"
    ```
 
-3. Build the container. On first terminal open, `setup-1password.sh` will authenticate and pull credentials from the vault.
+3. Build the container and open a terminal
+4. Run `setup-1password` and follow the prompts:
+   ```
+   No 1Password account configured.
+
+   How do you sign in to 1Password?
+     1) Master password + secret key
+     2) SSO (Microsoft, Google, Okta, etc.)
+
+   Choice [1/2]: 1
+
+   Sign-in address: my.1password.eu
+   Email: you@example.com
+   Secret key: A3-XXXXXX-...
+
+   Adding account and signing in...
+   (Enter your master password when prompted)
+
+   Signed in to 1Password!
+   Loading credentials from vault 'DevContainer'...
+     ANTHROPIC_API_KEY: loaded
+     ...
+   ```
+   If you choose **SSO**, the script explains how to create a service account token instead.
+5. On subsequent container starts, just run `setup-1password` again — only your master password is needed
 
 The script only fills in variables that aren't already set — so you can mix sources (e.g. Anthropic key from env var, Atlassian tokens from 1Password).
 
@@ -111,12 +142,12 @@ Set these on your host before building the container, or add them to `.env` in t
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
-| `ANTHROPIC_API_KEY` | Claude Code authentication (alternative: `claude login` or 1Password) | Yes* |
+| `ANTHROPIC_API_KEY` | Claude Code authentication (alternative: `claude login` OAuth or 1Password) | No* |
 | `ATLASSIAN_SITE_NAME` | Confluence/Jira site name (e.g. `mycompany`) | For Confluence/Jira MCP* |
 | `ATLASSIAN_USER_EMAIL` | Atlassian account email | For Confluence + Bitbucket* |
 | `ATLASSIAN_API_TOKEN` | Classic Atlassian API token ([create here](https://id.atlassian.com/manage-profile/security/api-tokens)) | For Confluence/Jira MCP* |
 | `BITBUCKET_API_TOKEN` | Bitbucket scoped API token (Bitbucket → Account settings → Security) | For Bitbucket MCP + git HTTPS* |
-| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub PAT (for MCP server, not `gh` CLI) | For GitHub MCP* |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub PAT (for MCP server + git HTTPS + `gh` CLI auth) | For GitHub MCP* |
 | `OP_SERVICE_ACCOUNT_TOKEN` | 1Password service account token (for headless/CI auth) | No |
 | `OP_VAULT_NAME` | 1Password vault name (default: `DevContainer`) | No |
 | `FIREWALL_EXTRA_DOMAINS` | Space-separated domains to add to firewall allowlist | No |
@@ -135,6 +166,15 @@ How to set them:
 
 **Languages & tools:** R 4.x with renv, Node 20, Python 3 with Poetry, Claude Code, Git, gh CLI, git-delta, jq, fzf.
 
+**Claude Code setup:** On container creation, `setup-env.sh` automatically:
+- Deploys security hooks from `.claude/hooks/` to `~/.claude/hooks/` (global for all repos in the container)
+- Generates `~/.claude/settings.json` with hook registrations (PreToolUse, PostToolUse, PostToolUseFailure)
+- Generates `~/.claude/.mcp.json` with MCP server configs (from env vars or 1Password)
+- Deploys a global `~/.claude/CLAUDE.md` for container-wide instructions
+- Configures git credentials for Bitbucket HTTPS and authenticates the `gh` CLI from tokens
+
+The `cc` alias runs `claude --dangerously-skip-permissions` — safe because the container IS the sandbox.
+
 **Firewall:** Default-DROP iptables policy. HTTPS (443) is open to any domain for research; all other ports are restricted to an allowlist (Anthropic API, npm, CRAN, PyPI, GitHub, etc). Edit `.devcontainer/init-firewall.sh` to add domains.
 
 **Security hooks** are deployed globally inside the container — they apply to every repo you open:
@@ -147,7 +187,7 @@ How to set them:
 | `failure-reset.sh` | PostToolUse | Resets the failure counter on success |
 | `failure-counter.sh` | PostToolUseFailure | Warns after 5 consecutive failures |
 
-Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` on container creation by `setup-env.sh`.
+Hook source is `.claude/hooks/`. They're copied to `~/.claude/hooks/` on container creation by `setup-env.sh`. Edit hooks in the repo, rebuild to deploy.
 
 **Customization:** To remove languages you don't need (e.g. R), delete the corresponding lines from `.devcontainer/Dockerfile` and rebuild.
 
@@ -160,8 +200,8 @@ Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` o
 | Exfiltration | Hooks block data-sending commands at the application layer |
 | Injection | PostToolUse hook warns on known prompt injection patterns |
 | Loop detection | Hooks block repeated commands and track failures |
-| Credentials | 1Password (never on disk), SSH agent forwarding, `.gitconfig` readonly |
-| Sudo | Locked down — only `init-firewall.sh` is allowed |
+| Credentials | 1Password (never on disk), SSH via agent forwarding or in-container agent, `.gitconfig` readonly |
+| Sudo | Locked down — only `init-firewall.sh` and op config ownership fix allowed |
 | CI | Trivy scans for CVEs, Dockerfile misconfigs, secrets, and licenses |
 
 ## Mounts
@@ -174,13 +214,13 @@ Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` o
 | `.claude` | Docker volume | Isolated Claude config + hooks |
 | renv cache | Docker volume | R package cache |
 | gh config | Docker volume | GitHub CLI auth (`gh auth login`) |
-| op config | Docker volume | 1Password CLI account metadata |
+| op config | Docker volume | 1Password CLI account metadata (persists across rebuilds) |
 
-SSH keys are **not** mounted — agent forwarding is used instead.
+SSH keys are **not** mounted — they're either loaded from 1Password into an in-container agent, or forwarded from the host agent. HTTPS token auth is also supported as an alternative to SSH.
 
 ## Platform notes
 
-**Windows:** The `.gitconfig` mount uses `%USERPROFILE%\.gitconfig`. SSH agent forwarding requires the OpenSSH Authentication Agent service to be running (`Get-Service ssh-agent` in PowerShell).
+**Windows:** The `.gitconfig` mount uses `%USERPROFILE%\.gitconfig`. SSH agent forwarding requires the OpenSSH Authentication Agent service (needs admin). If you don't have admin, use 1Password SSH keys (loaded into an in-container agent) or HTTPS token auth instead.
 
 **Mac/Linux:** Change the `.gitconfig` mount in `devcontainer.json` from:
 `source=${localEnv:USERPROFILE}\\.gitconfig` → `source=${localEnv:HOME}/.gitconfig`

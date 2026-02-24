@@ -15,7 +15,11 @@ if [ ! -f "$WRITABLE_GITCONFIG" ]; then
 fi
 export GIT_CONFIG_GLOBAL="$WRITABLE_GITCONFIG"
 
-# Load credentials from 1Password or validate env vars
+# Load credentials: first check for previously saved 1Password credentials,
+# then try live 1Password auth (service account or cached session)
+if [ -f /home/vscode/.op-credentials ]; then
+    source /home/vscode/.op-credentials
+fi
 if [ -f /usr/local/bin/setup-1password.sh ]; then
     source /usr/local/bin/setup-1password.sh
 fi
@@ -210,9 +214,9 @@ echo "Tools: R $(R --version 2>/dev/null | head -1 | grep -oP 'version \K[^ ]+' 
 # Auth status (covers env vars, 1Password, and manual login)
 if [ -n "${SSH_AUTH_SOCK:-}" ]; then
     KEY_COUNT=$(ssh-add -l 2>/dev/null | grep -c "SHA256" || true)
-    [[ "$KEY_COUNT" -gt 0 ]] && echo "SSH agent: $KEY_COUNT key(s)" || echo "WARNING: SSH agent socket exists but no keys loaded"
+    [[ "$KEY_COUNT" -gt 0 ]] && echo "SSH agent: $KEY_COUNT key(s)" || echo "SSH agent: socket exists but no keys loaded"
 else
-    echo "WARNING: No SSH agent socket. Start OpenSSH Agent on host."
+    echo "SSH agent: not available (run setup-1password to load keys from 1Password, or use HTTPS)"
 fi
 
 if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && ! gh auth status >/dev/null 2>&1; then
@@ -232,4 +236,5 @@ for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
 done
 
 echo ""
-echo "Ready. Run: claude --dangerously-skip-permissions"
+echo "Aliases: cc = claude --dangerously-skip-permissions"
+echo "Ready. Run: cc"
