@@ -67,14 +67,19 @@ To set it up:
 | Atlassian | Login | `site name`, `email`, `api token` |
 | Bitbucket Token | API Credential | `credential` |
 | GitHub Token | API Credential | `token` |
-| SSH Key GitHub | SSH Key | `private_key` (optional) |
-| SSH Key Bitbucket | SSH Key | `private_key` (optional) |
+| SSH Key GitHub | Secure Note | `private_key` (concealed, optional) |
+| SSH Key Bitbucket | Secure Note | `private_key` (concealed, optional) |
 
-3. Build the container. On first terminal open, `setup-1password.sh` will attempt to authenticate and pull credentials from the vault.
+   The `op` CLI can't set the private key field on SSH Key items, so SSH keys are stored as Secure Notes with a `private_key[concealed]` field. Create them in PowerShell:
+   ```powershell
+   op item create --vault DevContainer --category="Secure Note" --title="SSH Key Bitbucket" "private_key[concealed]=$(Get-Content -Raw $HOME\.ssh\id_rsa)"
+   ```
+
+3. Build the container. On first terminal open, `setup-1password.sh` will authenticate and pull credentials from the vault.
 
 The script only fills in variables that aren't already set — so you can mix sources (e.g. Anthropic key from env var, Atlassian tokens from 1Password).
 
-SSH keys from 1Password are loaded directly into the ssh-agent (never written to disk). If the vault has a GitHub Token, the `gh` CLI is authenticated automatically.
+SSH keys from 1Password are loaded directly into the ssh-agent (never written to disk). The `gh` CLI is authenticated automatically if a GitHub Token exists.
 
 ### Env vars
 

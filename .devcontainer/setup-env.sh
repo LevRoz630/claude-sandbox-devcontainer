@@ -207,13 +207,29 @@ fi
 echo ""
 echo "Tools: R $(R --version 2>/dev/null | head -1 | grep -oP 'version \K[^ ]+' || echo '?'), Node $(node --version 2>/dev/null || echo '?'), Python $(python3 --version 2>/dev/null | grep -oP '\d+\.\S+' || echo '?'), Claude $(claude --version 2>/dev/null || echo '?')"
 
+# Auth status (covers env vars, 1Password, and manual login)
 if [ -n "${SSH_AUTH_SOCK:-}" ]; then
     KEY_COUNT=$(ssh-add -l 2>/dev/null | grep -c "SHA256" || true)
-    [[ "$KEY_COUNT" -gt 0 ]] && echo "SSH agent: $KEY_COUNT key(s)" || echo "WARNING: SSH agent socket exists but no keys loaded. Run ssh-add on host."
+    [[ "$KEY_COUNT" -gt 0 ]] && echo "SSH agent: $KEY_COUNT key(s)" || echo "WARNING: SSH agent socket exists but no keys loaded"
 else
     echo "WARNING: No SSH agent socket. Start OpenSSH Agent on host."
 fi
 
+if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && ! gh auth status >/dev/null 2>&1; then
+    echo "$GITHUB_PERSONAL_ACCESS_TOKEN" | gh auth login --with-token 2>/dev/null
+fi
 gh auth status >/dev/null 2>&1 && echo "GitHub CLI: authenticated" || echo "GitHub CLI: not authenticated (run gh auth login)"
+
+echo ""
+echo "Credential status:"
+for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
+           ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
+    if [ -n "${!var:-}" ]; then
+        echo "  $var: set"
+    else
+        echo "  $var: NOT SET"
+    fi
+done
+
 echo ""
 echo "Ready. Run: claude --dangerously-skip-permissions"

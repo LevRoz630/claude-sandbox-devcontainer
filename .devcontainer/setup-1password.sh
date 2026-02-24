@@ -14,7 +14,6 @@ VAULT="${OP_VAULT_NAME:-DevContainer}"
 op_fill() {
     local var_name="$1"
     local op_ref="$2"
-    # Skip if already set from env / .env
     if [ -n "${!var_name:-}" ]; then
         return 0
     fi
@@ -33,7 +32,6 @@ use_op=false
 if ! command -v op &>/dev/null; then
     echo "1Password CLI: not installed — using env vars only"
 elif [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
-    # Service account mode — automatic, no interaction needed
     if op vault list --format=json >/dev/null 2>&1; then
         use_op=true
         echo "1Password: authenticated (service account)"
@@ -41,13 +39,10 @@ elif [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
         echo "WARNING: OP_SERVICE_ACCOUNT_TOKEN set but authentication failed — falling back to env vars"
     fi
 else
-    # Interactive mode — check if user has a session or account configured
     if op vault list --format=json >/dev/null 2>&1; then
-        # Already signed in (cached session)
         use_op=true
         echo "1Password: authenticated (cached session)"
     elif op account list --format=json 2>/dev/null | jq -e 'length > 0' >/dev/null 2>&1; then
-        # Account configured but session expired — need sign-in
         echo "1Password: account configured, session expired."
         echo "Run 'eval \$(op signin)' in terminal to authenticate, then re-run setup."
         echo "Falling back to env vars for now."
@@ -87,51 +82,27 @@ if [ "$use_op" = true ]; then
     done
 
     # SSH keys — load into agent (never touches disk)
+    # Stored as Secure Notes with private_key[concealed] field
     if [ -n "${SSH_AUTH_SOCK:-}" ]; then
         for key_item in "SSH Key GitHub" "SSH Key Bitbucket"; do
-            if op read "op://${VAULT}/${key_item}/private_key?ssh-format=openssh" 2>/dev/null | ssh-add - 2>/dev/null; then
-                echo "  ${key_item}: loaded into agent from 1Password"
+            if op read "op://${VAULT}/${key_item}/private_key" 2>/dev/null | ssh-add - 2>/dev/null; then
+                echo "  ${key_item}: loaded into agent"
             fi
         done
-        # Fallback: try a generic "SSH Key" item too
-        if op read "op://${VAULT}/SSH Key/private_key?ssh-format=openssh" 2>/dev/null | ssh-add - 2>/dev/null; then
-            echo "  SSH Key: loaded into agent from 1Password"
-        fi
-    fi
-
-    # GitHub CLI auth
-    if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && ! gh auth status >/dev/null 2>&1; then
-        echo "$GITHUB_PERSONAL_ACCESS_TOKEN" | gh auth login --with-token 2>/dev/null \
-            && echo "  GitHub CLI: authenticated via 1Password token" \
-            || echo "  GitHub CLI: auth failed"
     fi
 
     echo "1Password: ${loaded} loaded, ${failed} missing"
 fi
 
 # ---------------------------------------------------------------------------
-# Summary of credential sources
-# ---------------------------------------------------------------------------
-echo ""
-echo "Credential status:"
-for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
-           ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
-    if [ -n "${!var:-}" ]; then
-        echo "  $var: set"
-    else
-        echo "  $var: NOT SET"
-    fi
-done
-echo ""
-
-# ---------------------------------------------------------------------------
 # Persist exports in bashrc so new terminal sessions inherit them
 # ---------------------------------------------------------------------------
-for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
-           ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
+_OP_VARS=(ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL
+          ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN)
+for var in "${_OP_VARS[@]}"; do
     if [ -n "${!var:-}" ]; then
-        # Remove any old export for this var, then append the new one
         sed -i "/^export ${var}=/d" /home/vscode/.bashrc 2>/dev/null || true
         echo "export ${var}='${!var}'" >> /home/vscode/.bashrc
     fi
 done
+unset _OP_VARS
