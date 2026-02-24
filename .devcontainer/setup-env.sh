@@ -162,14 +162,18 @@ if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
     MCP_SERVERS="$MCP_SERVERS github"
 fi
 
+# Always write mcpServers (even if empty) to clear stale entries from previous runs
+if [ -f "$MCP_CONFIG" ]; then
+    jq --argjson servers "$MCP_SERVERS_OBJ" '.mcpServers = $servers' "$MCP_CONFIG" > "${MCP_CONFIG}.tmp" \
+        && mv "${MCP_CONFIG}.tmp" "$MCP_CONFIG"
+else
+    jq -n --argjson servers "$MCP_SERVERS_OBJ" '{"mcpServers": $servers}' > "$MCP_CONFIG"
+fi
+
+# Clean up old config location (pre-fix: had plaintext secrets)
+rm -f /home/vscode/.claude/.mcp.json
+
 if [ -n "$MCP_SERVERS" ]; then
-    # Merge mcpServers into existing ~/.claude.json (preserves other fields like settings)
-    if [ -f "$MCP_CONFIG" ]; then
-        jq --argjson servers "$MCP_SERVERS_OBJ" '.mcpServers = $servers' "$MCP_CONFIG" > "${MCP_CONFIG}.tmp" \
-            && mv "${MCP_CONFIG}.tmp" "$MCP_CONFIG"
-    else
-        jq -n --argjson servers "$MCP_SERVERS_OBJ" '{"mcpServers": $servers}' > "$MCP_CONFIG"
-    fi
     echo "MCP servers configured:$MCP_SERVERS"
 else
     echo "MCP servers: none (set env vars on host to enable — see README)"
