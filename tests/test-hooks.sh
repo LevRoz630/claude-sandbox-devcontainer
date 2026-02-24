@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests all 6 hook scripts using mock JSON input. No API key needed.
+# Tests all 5 hook scripts using mock JSON input. No API key needed.
 set -uo pipefail
 
 PASS=0; FAIL=0; SKIP=0
@@ -8,7 +8,7 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 skip() { echo "  SKIP: $1"; SKIP=$((SKIP + 1)); }
 section() { echo ""; echo "=== $1 ==="; }
 
-ALL_HOOKS="exfil-guard.sh injection-scanner.sh dedup-check.sh failure-counter.sh failure-reset.sh progress-gate.sh"
+ALL_HOOKS="exfil-guard.sh injection-scanner.sh dedup-check.sh failure-counter.sh failure-reset.sh"
 
 has_all_hooks() {
     local dir="$1"
@@ -27,7 +27,7 @@ for candidate in "$REPO_HOOKS" "/workspace/.claude/hooks" "${HOME}/.claude/hooks
 done
 
 if [[ -z "$HOOKS_DIR" ]]; then
-    echo "ERROR: Could not find hooks directory with all 6 scripts"
+    echo "ERROR: Could not find hooks directory with all 5 scripts"
     exit 1
 fi
 echo "Using hooks from: $HOOKS_DIR"
@@ -64,14 +64,6 @@ webfetch_json() {
 
 session_json() {
     jq -n --arg s "$1" '{session_id: $s}'
-}
-
-stop_json() {
-    if [[ "$2" == "true" ]]; then
-        jq -n --arg s "$1" '{session_id: $s, stop_hook_active: true}'
-    else
-        jq -n --arg s "$1" '{session_id: $s, stop_hook_active: false}'
-    fi
 }
 
 # --- 1. exfil-guard.sh ---
@@ -229,49 +221,6 @@ OUTPUT=$(run_hook failure-counter.sh "$(session_json "$SID")")
 SID="reset-test-fresh"
 run_hook failure-reset.sh "$(session_json "$SID")"
 [[ $? -eq 0 ]] && pass "Reset on missing state file: no crash (exit 0)" || fail "Reset on missing state: exit code $?"
-
-# --- 6. progress-gate.sh ---
-
-section "6. progress-gate.sh — Stop Hook with Progress Check"
-
-TEST_REPO=$(mktemp -d)
-git -C "$TEST_REPO" init >/dev/null 2>&1
-git -C "$TEST_REPO" config user.email "test@test.com"
-git -C "$TEST_REPO" config user.name "Test"
-GIT_COMMITTER_DATE="2025-01-01T00:00:00" GIT_AUTHOR_DATE="2025-01-01T00:00:00" \
-    git -C "$TEST_REPO" commit --allow-empty -m "init" >/dev/null 2>&1
-
-SID="progress-test-1"
-echo "change" > "$TEST_REPO/file.txt"
-git -C "$TEST_REPO" add file.txt
-OUTPUT=$(cd "$TEST_REPO" && run_hook progress-gate.sh "$(stop_json "$SID" false)")
-[[ -z "$OUTPUT" ]] && pass "stop_hook_active=false + changes: allow stop" || fail "changes present: unexpected output: $OUTPUT"
-git -C "$TEST_REPO" reset HEAD -- file.txt >/dev/null 2>&1
-rm -f "$TEST_REPO/file.txt"
-
-SID="progress-test-2"
-OUTPUT=$(cd "$TEST_REPO" && run_hook progress-gate.sh "$(stop_json "$SID" false)")
-echo "$OUTPUT" | jq -e '.decision == "block"' >/dev/null 2>&1 && pass "stop_hook_active=false + no changes: block stop" || fail "no changes: expected block, got: $OUTPUT"
-
-SID="progress-test-3"
-OUTPUT=$(cd "$TEST_REPO" && run_hook progress-gate.sh "$(stop_json "$SID" true)")
-echo "$OUTPUT" | jq -e '.decision == "block"' >/dev/null 2>&1 && pass "stop_hook_active=true, cont_count=1: block" || fail "cont_count=1: expected block, got: $OUTPUT"
-
-SID="progress-test-4"
-cd "$TEST_REPO"
-run_hook progress-gate.sh "$(stop_json "$SID" true)" >/dev/null
-run_hook progress-gate.sh "$(stop_json "$SID" true)" >/dev/null
-OUTPUT=$(run_hook progress-gate.sh "$(stop_json "$SID" true)")
-cd - >/dev/null
-[[ -z "$OUTPUT" ]] && pass "stop_hook_active=true, cont_count=3: allow stop (hard cap)" || fail "hard cap: expected allow, got: $OUTPUT"
-
-SID="progress-test-nogit"
-NON_GIT_DIR=$(mktemp -d)
-OUTPUT=$(cd "$NON_GIT_DIR" && run_hook progress-gate.sh "$(stop_json "$SID" false)")
-[[ -z "$OUTPUT" ]] && pass "Not a git repo: allow stop" || fail "non-git: unexpected output: $OUTPUT"
-rm -rf "$NON_GIT_DIR"
-
-rm -rf "$TEST_REPO"
 
 # --- Results ---
 

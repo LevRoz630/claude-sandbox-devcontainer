@@ -76,7 +76,6 @@ How to set them:
 | `injection-scanner.sh` | PostToolUse (WebFetch) | Flags prompt injection patterns in fetched content |
 | `failure-reset.sh` | PostToolUse | Resets the failure counter on success |
 | `failure-counter.sh` | PostToolUseFailure | Warns after 5 consecutive failures |
-| `progress-gate.sh` | Stop | Blocks stop if no git progress detected |
 
 Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` on container creation by `setup-env.sh`.
 
@@ -90,7 +89,7 @@ Hook source of truth is `.claude/hooks/`. They're copied to `~/.claude/hooks/` o
 | Network | Allowlist firewall, default DROP, HTTPS open for research |
 | Exfiltration | Hooks block data-sending commands at the application layer |
 | Injection | PostToolUse hook warns on known prompt injection patterns |
-| Loop detection | Hooks block repeated commands, track failures, gate on progress |
+| Loop detection | Hooks block repeated commands and track failures |
 | Credentials | SSH agent forwarding only (no keys in container), `.gitconfig` readonly |
 | Sudo | Locked down — only `init-firewall.sh` is allowed |
 | CI | Trivy scans for CVEs, Dockerfile misconfigs, secrets, and licenses |

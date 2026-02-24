@@ -65,17 +65,7 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
         ]
       }
     ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/progress-gate.sh"
-          }
-        ]
-      }
-    ]
+    "Stop": []
   }
 }
 SETTINGS
@@ -143,6 +133,15 @@ if [ ! -f "$MCP_CONFIG" ]; then
     fi
 else
     echo "MCP config: using existing $MCP_CONFIG"
+fi
+
+# Deploy global CLAUDE.md (only if none exists yet)
+if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
+    cat > /home/vscode/.claude/CLAUDE.md << 'CLAUDEMD'
+# Global Container Instructions
+
+- Markdown/documentation files (*.md) may be created or edited when explicitly requested
+CLAUDEMD
 fi
 
 mkdir -p /home/vscode/.local/share/renv
