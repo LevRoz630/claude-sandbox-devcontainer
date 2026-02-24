@@ -95,6 +95,24 @@ if [ ! -f "$MCP_CONFIG" ]; then
         MCP_SERVERS="$MCP_SERVERS confluence"
     fi
 
+    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
+        MCP_JSON=$(echo "$MCP_JSON" | jq \
+            --arg site "$ATLASSIAN_SITE_NAME" \
+            --arg email "$ATLASSIAN_USER_EMAIL" \
+            --arg token "$ATLASSIAN_API_TOKEN" \
+            '.mcpServers.jira = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "@aashari/mcp-server-atlassian-jira"],
+                "env": {
+                    "ATLASSIAN_SITE_NAME": $site,
+                    "ATLASSIAN_USER_EMAIL": $email,
+                    "ATLASSIAN_API_TOKEN": $token
+                }
+            }')
+        MCP_SERVERS="$MCP_SERVERS jira"
+    fi
+
     if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
         MCP_JSON=$(echo "$MCP_JSON" | jq \
             --arg email "$ATLASSIAN_USER_EMAIL" \
