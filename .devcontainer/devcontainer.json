@@ -74,7 +74,7 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
   "initializeCommand": [],
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && bash /usr/local/bin/setup-1password.sh || true",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && bash /usr/local/bin/setup-env.sh || true",
   "postCreateCommand": "bash /usr/local/bin/setup-env.sh",
   "waitFor": "postStartCommand"
 }

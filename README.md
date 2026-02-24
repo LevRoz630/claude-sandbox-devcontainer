@@ -118,7 +118,7 @@ If you don't want 1Password, plain env vars still work exactly as before.
 
 ## MCP servers
 
-MCP servers (Confluence, Jira, Bitbucket, GitHub) are configured automatically from env vars — whether those come from `.env`, host environment, or 1Password. `setup-env.sh` generates `~/.claude/.mcp.json` from them.
+MCP servers (Confluence, Jira, Bitbucket, GitHub) are configured automatically from env vars — whether those come from `.env`, host environment, or 1Password. `setup-env.sh` registers them in `~/.claude.json` using `${VAR}` references (no plaintext secrets on disk).
 
 | Server | Package | Required env vars |
 |--------|---------|-------------------|
@@ -169,7 +169,7 @@ How to set them:
 **Claude Code setup:** On container creation, `setup-env.sh` automatically:
 - Deploys security hooks from `.claude/hooks/` to `~/.claude/hooks/` (global for all repos in the container)
 - Generates `~/.claude/settings.json` with hook registrations (PreToolUse, PostToolUse, PostToolUseFailure)
-- Generates `~/.claude/.mcp.json` with MCP server configs (from env vars or 1Password)
+- Registers MCP servers in `~/.claude.json` with `${VAR}` env references (no plaintext secrets on disk)
 - Deploys a global `~/.claude/CLAUDE.md` for container-wide instructions
 - Configures git credentials for Bitbucket HTTPS and authenticates the `gh` CLI from tokens
 

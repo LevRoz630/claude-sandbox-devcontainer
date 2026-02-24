@@ -165,7 +165,7 @@ interactive_signin() {
         echo "1Password account found. Signing in..."
         echo "(Enter your master password when prompted)"
         echo ""
-        if op signin; then
+        if eval "$(op signin)"; then
             echo ""
             echo "Signed in to 1Password!"
             return 0
@@ -231,7 +231,7 @@ interactive_signin() {
             echo "Adding account and signing in..."
             echo "(Enter your master password when prompted)"
             echo ""
-            if op account add --address "$op_address" --email "$op_email" --secret-key "$op_secret_key" --signin; then
+            if eval "$(op account add --address "$op_address" --email "$op_email" --secret-key "$op_secret_key" --signin)"; then
                 echo ""
                 echo "Signed in to 1Password!"
                 return 0
