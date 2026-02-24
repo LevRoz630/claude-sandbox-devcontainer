@@ -19,13 +19,26 @@ The container provides OS-level isolation: an allowlist-only firewall, locked-do
 
 ## Getting started
 
+### VS Code (recommended)
+
 1. Clone this repo (or copy `.devcontainer/` and `.claude/` into your own project)
-2. Open in VS Code → Command Palette → **Dev Containers: Reopen in Container**
-3. Once built, run `claude --dangerously-skip-permissions`
-4. On first run inside the container:
+2. Create a `.env` file in the project root with your credentials (see [Environment variables](#environment-variables))
+3. Open in VS Code → Command Palette → **Dev Containers: Reopen in Container**
+4. Once built, run `claude --dangerously-skip-permissions`
+5. On first run inside the container:
    - Authenticate Claude Code: `claude login` (or set `ANTHROPIC_API_KEY` on your host)
    - Authenticate GitHub CLI: `gh auth login` (if you need PR/issue access)
-5. Verify the setup: `bash tests/test-container.sh`
+6. Verify the setup: `bash tests/test-container.sh`
+
+### CLI
+
+The `devcontainer` CLI doesn't read `.env` files — you must source it first:
+
+```bash
+set -a && source .env && set +a
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . bash
+```
 
 ## Credentials
 
@@ -81,7 +94,7 @@ Confluence and Bitbucket use **separate tokens** (Atlassian has different token 
 - **Confluence:** Classic API token from [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens) (basic auth)
 - **Bitbucket:** Scoped API token from Bitbucket → Account settings → Security → API tokens
 
-Git HTTPS push/pull to Bitbucket is configured automatically from `BITBUCKET_API_TOKEN`.
+Git HTTPS push/pull to Bitbucket is configured automatically from `BITBUCKET_API_TOKEN` (uses `x-bitbucket-api-token-auth` as the git credential username, as [required by Bitbucket scoped tokens](https://support.atlassian.com/bitbucket-cloud/docs/using-api-tokens/)).
 
 Only servers whose credentials are present get added. The config is only generated once — it won't overwrite your edits.
 
