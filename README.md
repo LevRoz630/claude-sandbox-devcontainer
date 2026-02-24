@@ -54,7 +54,8 @@ To set it up:
 | Atlassian | Login | `site name`, `email`, `api token` |
 | Bitbucket Token | API Credential | `credential` |
 | GitHub Token | API Credential | `token` |
-| SSH Key | SSH Key | `private_key` (optional) |
+| SSH Key GitHub | SSH Key | `private_key` (optional) |
+| SSH Key Bitbucket | SSH Key | `private_key` (optional) |
 
 3. Build the container. On first terminal open, `setup-1password.sh` will attempt to authenticate and pull credentials from the vault.
 

@@ -86,12 +86,16 @@ if [ "$use_op" = true ]; then
         fi
     done
 
-    # SSH key — load into agent (never touches disk)
+    # SSH keys — load into agent (never touches disk)
     if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+        for key_item in "SSH Key GitHub" "SSH Key Bitbucket"; do
+            if op read "op://${VAULT}/${key_item}/private_key?ssh-format=openssh" 2>/dev/null | ssh-add - 2>/dev/null; then
+                echo "  ${key_item}: loaded into agent from 1Password"
+            fi
+        done
+        # Fallback: try a generic "SSH Key" item too
         if op read "op://${VAULT}/SSH Key/private_key?ssh-format=openssh" 2>/dev/null | ssh-add - 2>/dev/null; then
-            echo "  SSH key: loaded into agent from 1Password"
-        else
-            echo "  SSH key: not found in vault (using host agent forwarding)"
+            echo "  SSH Key: loaded into agent from 1Password"
         fi
     fi
 

@@ -4,3 +4,4 @@ tmpclaude-*
 *.local.json
 .mcp.json
 *.txt
+1password-vault-setup.sh
