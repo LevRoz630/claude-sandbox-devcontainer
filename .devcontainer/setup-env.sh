@@ -181,6 +181,7 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 # Global Container Instructions
 
 - Markdown/documentation files (*.md) may be created or edited when explicitly requested
+- Never add Co-Authored-By lines to git commits
 CLAUDEMD
 fi
 

@@ -181,9 +181,9 @@ The `cc` alias runs `claude --dangerously-skip-permissions` — safe because the
 
 | Hook | Trigger | What it does |
 |------|---------|--------------|
-| `exfil-guard.sh` | PreToolUse (Bash) | Blocks `curl POST`, `wget --post-data`, `nc`, DNS exfil, etc. |
-| `dedup-check.sh` | PreToolUse | Blocks after 3 identical tool calls (loop detection) |
-| `injection-scanner.sh` | PostToolUse (WebFetch) | Flags prompt injection patterns in fetched content |
+| `exfil-guard.sh` | PreToolUse (Bash) | Blocks `curl POST`, `wget --post-data`, `nc`, DNS exfil to external hosts (localhost allowed for dev) |
+| `dedup-check.sh` | PreToolUse | Blocks after 5 identical tool calls; excludes read-only tools; resets when a different call is made |
+| `injection-scanner.sh` | PostToolUse (WebFetch) | Warns about prompt injection patterns in fetched content (advisory, doesn't block) |
 | `failure-reset.sh` | PostToolUse | Resets the failure counter on success |
 | `failure-counter.sh` | PostToolUseFailure | Warns after 5 consecutive failures |
 

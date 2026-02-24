@@ -12,16 +12,21 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [[ -z "$CMD" ]] && exit 0
 
-# curl/wget data-sending flags
+# Allow localhost/loopback — local dev server testing is not exfiltration
+if echo "$CMD" | grep -qiE '\b(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])\b'; then
+    exit 0
+fi
+
+# curl/wget data-sending flags (external only — localhost already allowed above)
 if echo "$CMD" | grep -qiE '\bcurl\b' && \
    echo "$CMD" | grep -qiE '(-X\s*(POST|PUT|PATCH|DELETE)|-d\b|--data|--form|-F\b|--upload-file)'; then
-    echo "BLOCKED: curl with data-sending flags. Use WebFetch for read-only research." >&2
+    echo "BLOCKED: curl with data-sending flags to external host. Use WebFetch for read-only research." >&2
     exit 2
 fi
 
 if echo "$CMD" | grep -qiE '\bwget\b' && \
    echo "$CMD" | grep -qiE '(--post-data|--post-file)'; then
-    echo "BLOCKED: wget with POST data. Use WebFetch for read-only research." >&2
+    echo "BLOCKED: wget with POST data to external host. Use WebFetch for read-only research." >&2
     exit 2
 fi
 
