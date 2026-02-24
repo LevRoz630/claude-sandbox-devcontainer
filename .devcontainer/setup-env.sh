@@ -77,15 +77,15 @@ if [ ! -f "$MCP_CONFIG" ]; then
     MCP_JSON='{"mcpServers":{}}'
     MCP_SERVERS=""
 
-    if [ -n "${ATLASSIAN_SITE_NAME:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ]; then
+    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
         MCP_JSON=$(echo "$MCP_JSON" | jq \
             --arg site "$ATLASSIAN_SITE_NAME" \
-            --arg email "${ATLASSIAN_USER_EMAIL:-}" \
+            --arg email "$ATLASSIAN_USER_EMAIL" \
             --arg token "$ATLASSIAN_API_TOKEN" \
-            '.mcpServers.atlassian = {
+            '.mcpServers.confluence = {
                 "type": "stdio",
                 "command": "npx",
-                "args": ["-y", "@anthropic/mcp-atlassian"],
+                "args": ["-y", "@aashari/mcp-server-atlassian-confluence"],
                 "env": {
                     "ATLASSIAN_SITE_NAME": $site,
                     "ATLASSIAN_USER_EMAIL": $email,
@@ -95,17 +95,17 @@ if [ ! -f "$MCP_CONFIG" ]; then
         MCP_SERVERS="$MCP_SERVERS confluence"
     fi
 
-    if [ -n "${ATLASSIAN_BITBUCKET_USERNAME:-}" ] && [ -n "${ATLASSIAN_BITBUCKET_APP_PASSWORD:-}" ]; then
+    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
         MCP_JSON=$(echo "$MCP_JSON" | jq \
-            --arg user "$ATLASSIAN_BITBUCKET_USERNAME" \
-            --arg pass "$ATLASSIAN_BITBUCKET_APP_PASSWORD" \
+            --arg email "$ATLASSIAN_USER_EMAIL" \
+            --arg token "$BITBUCKET_API_TOKEN" \
             '.mcpServers.bitbucket = {
                 "type": "stdio",
                 "command": "npx",
-                "args": ["-y", "@anthropic/mcp-atlassian"],
+                "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
                 "env": {
-                    "ATLASSIAN_BITBUCKET_USERNAME": $user,
-                    "ATLASSIAN_BITBUCKET_APP_PASSWORD": $pass
+                    "ATLASSIAN_USER_EMAIL": $email,
+                    "ATLASSIAN_API_TOKEN": $token
                 }
             }')
         MCP_SERVERS="$MCP_SERVERS bitbucket"
@@ -142,6 +142,16 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 
 - Markdown/documentation files (*.md) may be created or edited when explicitly requested
 CLAUDEMD
+fi
+
+# Configure git credential helper for Bitbucket HTTPS push/pull
+if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
+    git config --global credential.https://bitbucket.org.helper store
+    cat > /home/vscode/.git-credentials << CREDS
+https://${ATLASSIAN_USER_EMAIL}:${BITBUCKET_API_TOKEN}@bitbucket.org
+CREDS
+    chmod 600 /home/vscode/.git-credentials
+    echo "Bitbucket git HTTPS: configured"
 fi
 
 mkdir -p /home/vscode/.local/share/renv

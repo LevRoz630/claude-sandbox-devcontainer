@@ -28,13 +28,19 @@ The container provides OS-level isolation: an allowlist-only firewall, locked-do
 
 ## MCP servers
 
-MCP servers (Confluence, Bitbucket, GitHub) work inside the container automatically — set the env vars on your host and they get passed through on container build. `setup-env.sh` generates `~/.claude/.mcp.json` from them.
+MCP servers (Confluence, Bitbucket, GitHub) work inside the container automatically — set the env vars on your host (or in `.env`) and they get passed through on container build. `setup-env.sh` generates `~/.claude/.mcp.json` from them.
 
-| Server | Required env vars |
-|--------|-------------------|
-| Confluence | `ATLASSIAN_SITE_NAME`, `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_API_TOKEN` |
-| Bitbucket | `ATLASSIAN_BITBUCKET_USERNAME`, `ATLASSIAN_BITBUCKET_APP_PASSWORD` |
-| GitHub | `GITHUB_PERSONAL_ACCESS_TOKEN` |
+| Server | Package | Required env vars |
+|--------|---------|-------------------|
+| Confluence | `@aashari/mcp-server-atlassian-confluence` | `ATLASSIAN_SITE_NAME`, `ATLASSIAN_USER_EMAIL`, `ATLASSIAN_API_TOKEN` |
+| Bitbucket | `@aashari/mcp-server-atlassian-bitbucket` | `ATLASSIAN_USER_EMAIL`, `BITBUCKET_API_TOKEN` |
+| GitHub | `@modelcontextprotocol/server-github` | `GITHUB_PERSONAL_ACCESS_TOKEN` |
+
+Confluence and Bitbucket use **separate tokens** (Atlassian has different token systems per product):
+- **Confluence:** Classic API token from [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens) (basic auth)
+- **Bitbucket:** Scoped API token from Bitbucket → Account settings → Security → API tokens
+
+Git HTTPS push/pull to Bitbucket is configured automatically from `BITBUCKET_API_TOKEN`.
 
 Only servers whose credentials are present get added. The config is only generated once — it won't overwrite your edits.
 
@@ -42,22 +48,22 @@ HTTPS (443) is open, so no firewall changes are needed for MCP servers.
 
 ## Environment variables
 
-Set these on your host before building the container. They're passed through via `devcontainer.json`.
+Set these on your host before building the container, or add them to `.env` in the project root (gitignored). They're passed through via `devcontainer.json`.
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
 | `ANTHROPIC_API_KEY` | Claude Code authentication (alternative: `claude login`) | Yes |
-| `ATLASSIAN_SITE_NAME` | Confluence/Jira site (e.g. `mycompany.atlassian.net`) | For Confluence MCP |
-| `ATLASSIAN_USER_EMAIL` | Atlassian account email | For Confluence MCP |
-| `ATLASSIAN_API_TOKEN` | Atlassian API token | For Confluence MCP |
-| `ATLASSIAN_BITBUCKET_USERNAME` | Bitbucket username | For Bitbucket MCP |
-| `ATLASSIAN_BITBUCKET_APP_PASSWORD` | Bitbucket app password | For Bitbucket MCP |
+| `ATLASSIAN_SITE_NAME` | Confluence site name (e.g. `mycompany`) | For Confluence MCP |
+| `ATLASSIAN_USER_EMAIL` | Atlassian account email | For Confluence + Bitbucket |
+| `ATLASSIAN_API_TOKEN` | Classic Atlassian API token ([create here](https://id.atlassian.com/manage-profile/security/api-tokens)) | For Confluence MCP |
+| `BITBUCKET_API_TOKEN` | Bitbucket scoped API token (Bitbucket → Account settings → Security) | For Bitbucket MCP + git HTTPS |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub PAT (for MCP server, not `gh` CLI) | For GitHub MCP |
 | `FIREWALL_EXTRA_DOMAINS` | Space-separated domains to add to firewall allowlist | No |
 | `DNS_FILTER_PRIMARY` | DNS filtering provider (`auto`, IP, or `none`) | No |
 | `TZ` | Timezone (default: `Europe/London`) | No |
 
 How to set them:
+- **`.env` file** (recommended): Copy `.env` and fill in values — it's gitignored
 - **Windows:** System Properties → Environment Variables, or `setx VAR value`
 - **Mac/Linux:** Add `export VAR=value` to `~/.bashrc` or `~/.zshrc`
 
