@@ -68,7 +68,8 @@
     "OP_SERVICE_ACCOUNT_TOKEN": "${localEnv:OP_SERVICE_ACCOUNT_TOKEN}",
     "OP_VAULT_NAME": "${localEnv:OP_VAULT_NAME}",
     "FIREWALL_EXTRA_DOMAINS": "${localEnv:FIREWALL_EXTRA_DOMAINS}",
-    "DNS_FILTER_PRIMARY": "${localEnv:DNS_FILTER_PRIMARY}"
+    "DNS_FILTER_PRIMARY": "${localEnv:DNS_FILTER_PRIMARY}",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",

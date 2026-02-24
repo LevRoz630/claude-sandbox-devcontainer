@@ -98,86 +98,82 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
 SETTINGS
 fi
 
-# Generate MCP config from env vars (only if no .mcp.json exists yet)
+# Generate MCP config from env vars (regenerated on every run so credential updates take effect)
 MCP_CONFIG="/home/vscode/.claude/.mcp.json"
-if [ ! -f "$MCP_CONFIG" ]; then
-    MCP_JSON='{"mcpServers":{}}'
-    MCP_SERVERS=""
+MCP_JSON='{"mcpServers":{}}'
+MCP_SERVERS=""
 
-    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
-        MCP_JSON=$(echo "$MCP_JSON" | jq \
-            --arg site "$ATLASSIAN_SITE_NAME" \
-            --arg email "$ATLASSIAN_USER_EMAIL" \
-            --arg token "$ATLASSIAN_API_TOKEN" \
-            '.mcpServers.confluence = {
-                "type": "stdio",
-                "command": "npx",
-                "args": ["-y", "@aashari/mcp-server-atlassian-confluence"],
-                "env": {
-                    "ATLASSIAN_SITE_NAME": $site,
-                    "ATLASSIAN_USER_EMAIL": $email,
-                    "ATLASSIAN_API_TOKEN": $token
-                }
-            }')
-        MCP_SERVERS="$MCP_SERVERS confluence"
-    fi
+if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
+    MCP_JSON=$(echo "$MCP_JSON" | jq \
+        --arg site "$ATLASSIAN_SITE_NAME" \
+        --arg email "$ATLASSIAN_USER_EMAIL" \
+        --arg token "$ATLASSIAN_API_TOKEN" \
+        '.mcpServers.confluence = {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@aashari/mcp-server-atlassian-confluence"],
+            "env": {
+                "ATLASSIAN_SITE_NAME": $site,
+                "ATLASSIAN_USER_EMAIL": $email,
+                "ATLASSIAN_API_TOKEN": $token
+            }
+        }')
+    MCP_SERVERS="$MCP_SERVERS confluence"
+fi
 
-    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
-        MCP_JSON=$(echo "$MCP_JSON" | jq \
-            --arg site "$ATLASSIAN_SITE_NAME" \
-            --arg email "$ATLASSIAN_USER_EMAIL" \
-            --arg token "$ATLASSIAN_API_TOKEN" \
-            '.mcpServers.jira = {
-                "type": "stdio",
-                "command": "npx",
-                "args": ["-y", "@aashari/mcp-server-atlassian-jira"],
-                "env": {
-                    "ATLASSIAN_SITE_NAME": $site,
-                    "ATLASSIAN_USER_EMAIL": $email,
-                    "ATLASSIAN_API_TOKEN": $token
-                }
-            }')
-        MCP_SERVERS="$MCP_SERVERS jira"
-    fi
+if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
+    MCP_JSON=$(echo "$MCP_JSON" | jq \
+        --arg site "$ATLASSIAN_SITE_NAME" \
+        --arg email "$ATLASSIAN_USER_EMAIL" \
+        --arg token "$ATLASSIAN_API_TOKEN" \
+        '.mcpServers.jira = {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@aashari/mcp-server-atlassian-jira"],
+            "env": {
+                "ATLASSIAN_SITE_NAME": $site,
+                "ATLASSIAN_USER_EMAIL": $email,
+                "ATLASSIAN_API_TOKEN": $token
+            }
+        }')
+    MCP_SERVERS="$MCP_SERVERS jira"
+fi
 
-    if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
-        MCP_JSON=$(echo "$MCP_JSON" | jq \
-            --arg email "$ATLASSIAN_USER_EMAIL" \
-            --arg token "$BITBUCKET_API_TOKEN" \
-            '.mcpServers.bitbucket = {
-                "type": "stdio",
-                "command": "npx",
-                "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
-                "env": {
-                    "ATLASSIAN_USER_EMAIL": $email,
-                    "ATLASSIAN_API_TOKEN": $token
-                }
-            }')
-        MCP_SERVERS="$MCP_SERVERS bitbucket"
-    fi
+if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
+    MCP_JSON=$(echo "$MCP_JSON" | jq \
+        --arg email "$ATLASSIAN_USER_EMAIL" \
+        --arg token "$BITBUCKET_API_TOKEN" \
+        '.mcpServers.bitbucket = {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@aashari/mcp-server-atlassian-bitbucket"],
+            "env": {
+                "ATLASSIAN_USER_EMAIL": $email,
+                "ATLASSIAN_API_TOKEN": $token
+            }
+        }')
+    MCP_SERVERS="$MCP_SERVERS bitbucket"
+fi
 
-    if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
-        MCP_JSON=$(echo "$MCP_JSON" | jq \
-            --arg token "$GITHUB_PERSONAL_ACCESS_TOKEN" \
-            '.mcpServers.github = {
-                "type": "stdio",
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-github"],
-                "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": $token
-                }
-            }')
-        MCP_SERVERS="$MCP_SERVERS github"
-    fi
+if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
+    MCP_JSON=$(echo "$MCP_JSON" | jq \
+        --arg token "$GITHUB_PERSONAL_ACCESS_TOKEN" \
+        '.mcpServers.github = {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": $token
+            }
+        }')
+    MCP_SERVERS="$MCP_SERVERS github"
+fi
 
-    if [ -n "$MCP_SERVERS" ]; then
-        echo "$MCP_JSON" | jq . > "$MCP_CONFIG"
-        echo "MCP servers configured:$MCP_SERVERS"
-    else
-        echo "MCP servers: none (set env vars on host to enable — see README)"
-    fi
+if [ -n "$MCP_SERVERS" ]; then
+    echo "$MCP_JSON" | jq . > "$MCP_CONFIG"
+    echo "MCP servers configured:$MCP_SERVERS"
 else
-    echo "MCP config: using existing $MCP_CONFIG"
+    echo "MCP servers: none (set env vars on host to enable — see README)"
 fi
 
 # Deploy global CLAUDE.md (only if none exists yet)
