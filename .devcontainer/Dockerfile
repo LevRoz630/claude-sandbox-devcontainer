@@ -20,6 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 python3-venv python3-pip pipx \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# 1Password CLI
+RUN curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
+      | gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" \
+      > /etc/apt/sources.list.d/1password.list && \
+    apt-get update && apt-get install -y 1password-cli && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Node.js 20 via nodesource APT repo (explicit GPG key, no curl|bash)
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
       | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg && \
@@ -59,9 +67,9 @@ ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
 
 # Create workspace, config, and cache directories
 RUN mkdir -p /workspace /home/vscode/.claude /home/vscode/.local/share/renv \
-             /home/vscode/.config/gh && \
+             /home/vscode/.config/gh /home/vscode/.config/op && \
   chown -R vscode:vscode /workspace /home/vscode/.claude /home/vscode/.local \
-                         /home/vscode/.config/gh
+                         /home/vscode/.config/gh /home/vscode/.config/op
 
 WORKDIR /workspace
 
@@ -69,13 +77,14 @@ WORKDIR /workspace
 # Strip CRLF: Windows working tree may have \r despite .gitattributes eol=lf
 COPY init-firewall.sh /usr/local/bin/
 COPY setup-env.sh /usr/local/bin/
+COPY setup-1password.sh /usr/local/bin/
 USER root
-RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh && \
-    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh
+RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh && \
+    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh
 
 # Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall only
 RUN rm -f /etc/sudoers.d/vscode && \
-    echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/firewall && \
+    echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh, /etc/init.d/ssh start" > /etc/sudoers.d/firewall && \
     chmod 0440 /etc/sudoers.d/firewall
 
 USER vscode

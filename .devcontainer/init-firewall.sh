@@ -116,6 +116,12 @@ ALLOWED_DOMAINS=(
     "update.code.visualstudio.com"
     "marketplace.visualstudio.com"
     "vscode.blob.core.windows.net"
+    # 1Password CLI
+    "my.1password.com"
+    "my.1password.eu"
+    "my.1password.ca"
+    "cache.agilebits.com"
+    "downloads.1password.com"
 )
 
 # User-defined extra domains (space-separated env var)

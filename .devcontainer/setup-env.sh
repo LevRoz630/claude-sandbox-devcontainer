@@ -2,6 +2,29 @@
 # Post-create environment setup. Deploys hooks globally and checks auth.
 set -e
 
+# Set up writable git config that includes the read-only mounted .gitconfig
+# The host .gitconfig is mounted read-only at ~/.gitconfig; we point git to a
+# writable file that [include]s it so `git config --global` works.
+WRITABLE_GITCONFIG="/home/vscode/.gitconfig-local"
+if [ ! -f "$WRITABLE_GITCONFIG" ]; then
+    if [ -f /home/vscode/.gitconfig ]; then
+        echo -e "[include]\n\tpath = /home/vscode/.gitconfig" > "$WRITABLE_GITCONFIG"
+    else
+        touch "$WRITABLE_GITCONFIG"
+    fi
+fi
+export GIT_CONFIG_GLOBAL="$WRITABLE_GITCONFIG"
+
+# Load credentials from 1Password or validate env vars
+if [ -f /usr/local/bin/setup-1password.sh ]; then
+    source /usr/local/bin/setup-1password.sh
+fi
+
+# Make it persistent across shells
+if ! grep -q "GIT_CONFIG_GLOBAL" /home/vscode/.bashrc 2>/dev/null; then
+    echo 'export GIT_CONFIG_GLOBAL="/home/vscode/.gitconfig-local"' >> /home/vscode/.bashrc
+fi
+
 # Deploy hooks from the repo into user-level Claude config (global for all repos in container)
 mkdir -p /home/vscode/.claude/hooks
 if [ -d /workspace/.claude/hooks ] && ls /workspace/.claude/hooks/*.sh >/dev/null 2>&1; then
@@ -165,8 +188,9 @@ fi
 # Configure git credential helper for Bitbucket HTTPS push/pull
 if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
     git config --global credential.https://bitbucket.org.helper store
+    # Bitbucket scoped API tokens require x-bitbucket-api-token-auth as the username
     cat > /home/vscode/.git-credentials << CREDS
-https://${ATLASSIAN_USER_EMAIL}:${BITBUCKET_API_TOKEN}@bitbucket.org
+https://x-bitbucket-api-token-auth:${BITBUCKET_API_TOKEN}@bitbucket.org
 CREDS
     chmod 600 /home/vscode/.git-credentials
     echo "Bitbucket git HTTPS: configured"

@@ -47,6 +47,7 @@
     "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     "source=claude-renv-cache-${devcontainerId},target=/home/vscode/.local/share/renv,type=volume",
     "source=claude-gh-config-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
 
     // .gitconfig readonly (name/email only); SSH via agent forwarding; gh via `gh auth login`
     "source=${localEnv:USERPROFILE}\\.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
@@ -55,6 +56,7 @@
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
     "RENV_PATHS_CACHE": "/home/vscode/.local/share/renv",
+    "GIT_CONFIG_GLOBAL": "/home/vscode/.gitconfig-local",
     "DEVCONTAINER": "true",
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "ATLASSIAN_SITE_NAME": "${localEnv:ATLASSIAN_SITE_NAME}",
@@ -62,6 +64,8 @@
     "ATLASSIAN_API_TOKEN": "${localEnv:ATLASSIAN_API_TOKEN}",
     "BITBUCKET_API_TOKEN": "${localEnv:BITBUCKET_API_TOKEN}",
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}",
+    "OP_SERVICE_ACCOUNT_TOKEN": "${localEnv:OP_SERVICE_ACCOUNT_TOKEN}",
+    "OP_VAULT_NAME": "${localEnv:OP_VAULT_NAME}",
     "FIREWALL_EXTRA_DOMAINS": "${localEnv:FIREWALL_EXTRA_DOMAINS}",
     "DNS_FILTER_PRIMARY": "${localEnv:DNS_FILTER_PRIMARY}"
   },

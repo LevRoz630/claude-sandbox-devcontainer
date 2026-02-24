@@ -1,7 +1,7 @@
 # Claude Code Sandbox Devcontainer
 
 ## Project Overview
-Devcontainer for running Claude Code with `--dangerously-skip-permissions`. Ubuntu container with allowlist firewall, locked-down sudo, and no host credential leakage.
+Devcontainer for running Claude Code with `--dangerously-skip-permissions`. Ubuntu container with allowlist firewall, locked-down sudo, 1Password credential loading, and no host credential leakage.
 
 ## Key Directories
 - `.devcontainer/` — Dockerfile, firewall, env setup
@@ -19,6 +19,7 @@ Devcontainer for running Claude Code with `--dangerously-skip-permissions`. Ubun
 - Tests use `pass()`/`fail()`/`skip()` with summary counts
 - Firewall allowlist in `.devcontainer/init-firewall.sh`
 - Hooks in `.claude/hooks/`, deployed to `~/.claude/hooks/` by `setup-env.sh`
+- Credentials: 1Password → env vars → skip (see `setup-1password.sh`)
 - All scripts use `set -uo pipefail`
 
 ## Testing
@@ -29,7 +30,8 @@ bash tests/test-hooks.sh       # Hook unit tests (mock JSON, no API key)
 ```
 
 ## Security Invariants
-- No SSH private keys inside the container — agent forwarding only
+- No SSH private keys inside the container — agent forwarding or 1Password (memory only)
+- No plaintext secrets on disk — 1Password or env vars (in-memory export)
 - No `NOPASSWD: ALL` sudo — only allowlisted commands
 - Firewall default policy is DROP — only allowlisted domains reachable
 - Host filesystem not accessible outside /workspace
