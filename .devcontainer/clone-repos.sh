@@ -2,7 +2,7 @@
 # Interactive repo cloning from GitHub
 set -uo pipefail
 
-CLONE_DIR="${1:-/home/vscode/projects}"
+CLONE_DIR="${1:-$HOME/repos}"
 mkdir -p "$CLONE_DIR"
 
 # Check gh auth
