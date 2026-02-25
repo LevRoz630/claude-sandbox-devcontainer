@@ -42,16 +42,15 @@
   },
   "remoteUser": "vscode",
   "mounts": [
-    // Persistent Docker volumes (survive rebuilds, isolated from host)
+    // Persistent volumes (survive rebuilds)
     "source=claude-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     "source=claude-renv-cache-${devcontainerId},target=/home/vscode/.local/share/renv,type=volume",
     "source=claude-gh-config-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
-    // 1Password config: Docker volume (bind mounts from Windows have 777 perms, op CLI rejects them)
+    // Volume, not bind — Windows bind mounts get 777 perms, op CLI rejects them
     "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
 
-    // .gitconfig readonly (name/email only); SSH via agent forwarding; gh via `gh auth login`
-    // HOME is set on Linux/macOS natively and on Windows by Git for Windows
+    // Readonly; HOME works on Linux/macOS/Windows (Git for Windows sets it)
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
   ],
   "containerEnv": {
@@ -74,8 +73,6 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "initializeCommand": [],
   "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && bash /usr/local/bin/setup-env.sh || true",
-  "postCreateCommand": "bash /usr/local/bin/setup-env.sh",
   "waitFor": "postStartCommand"
 }

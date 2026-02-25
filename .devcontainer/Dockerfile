@@ -5,7 +5,7 @@ ENV TZ="$TZ"
 
 ARG CLAUDE_CODE_VERSION=latest
 
-# System packages + firewall tools + R dependencies + Python
+# System packages, firewall, R, Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
   git gh less procps sudo fzf zsh man-db unzip gnupg2 \
   jq nano vim curl wget \
@@ -28,7 +28,7 @@ RUN curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
     apt-get update && apt-get install -y 1password-cli && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Node.js 20 via nodesource APT repo (explicit GPG key, no curl|bash)
+# Node.js 20
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
       | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
@@ -36,45 +36,33 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
     apt-get update && apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Poetry via pipx into a shared location (available to all users)
+# Poetry, renv, Claude Code
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
-
-# renv bootstrap
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
-
-# Claude Code
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
-# Git delta for better diffs
+# Git delta
 ARG GIT_DELTA_VERSION=0.18.2
 RUN ARCH=$(dpkg --print-architecture) && \
   wget -q "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
   dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
   rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
 
-# Persistent bash history
-ARG USERNAME=vscode
-RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
-  && mkdir -p /commandhistory \
-  && touch /commandhistory/.bash_history \
-  && chown -R $USERNAME /commandhistory
-
-# Environment variables (defaults; devcontainer.json containerEnv can override)
-ENV DEVCONTAINER=true
-ENV RENV_PATHS_CACHE=/home/vscode/.local/share/renv
-ENV NODE_OPTIONS=--max-old-space-size=4096
-ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
-
-# Create workspace, config, and cache directories
+# Bash history + directories
+RUN mkdir -p /commandhistory && touch /commandhistory/.bash_history && chown -R vscode /commandhistory
 RUN mkdir -p /workspace /home/vscode/.claude /home/vscode/.local/share/renv \
              /home/vscode/.config/gh /home/vscode/.config/op && \
   chown -R vscode:vscode /workspace /home/vscode/.claude /home/vscode/.local \
                          /home/vscode/.config/gh /home/vscode/.config/op
 
+ENV DEVCONTAINER=true
+ENV RENV_PATHS_CACHE=/home/vscode/.local/share/renv
+ENV NODE_OPTIONS=--max-old-space-size=4096
+ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
+
 WORKDIR /workspace
 
-# Copy firewall + env setup scripts
-# Strip CRLF: Windows working tree may have \r despite .gitattributes eol=lf
+# Scripts (strip CRLF for Windows working trees)
 COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh /usr/local/bin/
 USER root
 RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
@@ -87,7 +75,7 @@ RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh
     printf '#!/bin/bash\nexec /usr/local/bin/sandbox-status.sh "$@"\n' > /usr/local/bin/sandbox-status && \
     chmod +x /usr/local/bin/setup-1password /usr/local/bin/sandbox-status
 
-# Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall + op config ownership fix
+# Sudo: allowlist only (base image grants NOPASSWD:ALL)
 RUN rm -f /etc/sudoers.d/vscode && \
     printf '%s\n' \
       "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh, /etc/init.d/ssh start" \
@@ -101,5 +89,4 @@ ENV HISTFILE=/commandhistory/.bash_history
 ENV EDITOR=nano
 ENV VISUAL=nano
 
-# Alias: `cc` launches Claude Code in permissive mode (the container IS the sandbox)
 RUN echo "alias cc='claude --dangerously-skip-permissions'" >> /home/vscode/.bashrc

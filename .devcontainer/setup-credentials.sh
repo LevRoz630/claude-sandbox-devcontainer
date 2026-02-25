@@ -1,7 +1,5 @@
 #!/bin/bash
-# Shared credential-dependent setup: MCP servers, git credentials, gh auth.
-# Sourced by setup-env.sh (on startup) and setup-1password.sh (after interactive login).
-# Expects credential env vars to already be exported.
+# MCP servers, git credentials, gh auth. Sourced by setup-env.sh and setup-1password.sh.
 set -uo pipefail
 
 setup_mcp_servers() {
@@ -47,7 +45,6 @@ setup_gh_auth() {
     fi
 }
 
-# Run all credential-dependent setup
 setup_post_credentials() {
     setup_mcp_servers
     setup_git_credentials
