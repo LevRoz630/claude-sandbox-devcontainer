@@ -132,6 +132,8 @@ section "8. Script Presence"
 [[ -x /usr/local/bin/init-firewall.sh ]] && pass "init-firewall.sh is executable" || fail "init-firewall.sh not executable"
 [[ -f /usr/local/bin/setup-env.sh ]] && pass "setup-env.sh exists" || fail "setup-env.sh missing"
 [[ -x /usr/local/bin/setup-env.sh ]] && pass "setup-env.sh is executable" || fail "setup-env.sh not executable"
+[[ -f /usr/local/bin/clone-repos.sh ]] && pass "clone-repos.sh exists" || fail "clone-repos.sh missing"
+[[ -x /usr/local/bin/clone-repos.sh ]] && pass "clone-repos.sh is executable" || fail "clone-repos.sh not executable"
 
 section "9. DNS Resolution"
 

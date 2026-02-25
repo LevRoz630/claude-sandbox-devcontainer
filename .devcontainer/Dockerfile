@@ -63,17 +63,18 @@ ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
 WORKDIR /workspace
 
 # Scripts (strip CRLF for Windows working trees)
-COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh /usr/local/bin/
+COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh clone-repos.sh /usr/local/bin/
 USER root
 RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
         /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
-        /usr/local/bin/sandbox-status.sh && \
+        /usr/local/bin/sandbox-status.sh /usr/local/bin/clone-repos.sh && \
     chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
         /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
-        /usr/local/bin/sandbox-status.sh && \
+        /usr/local/bin/sandbox-status.sh /usr/local/bin/clone-repos.sh && \
     printf '#!/bin/bash\nexec /usr/local/bin/setup-1password.sh --interactive "$@"\n' > /usr/local/bin/setup-1password && \
     printf '#!/bin/bash\nexec /usr/local/bin/sandbox-status.sh "$@"\n' > /usr/local/bin/sandbox-status && \
-    chmod +x /usr/local/bin/setup-1password /usr/local/bin/sandbox-status
+    printf '#!/bin/bash\nexec /usr/local/bin/clone-repos.sh "$@"\n' > /usr/local/bin/clone-repos && \
+    chmod +x /usr/local/bin/setup-1password /usr/local/bin/sandbox-status /usr/local/bin/clone-repos
 
 # Sudo: allowlist only (base image grants NOPASSWD:ALL)
 RUN rm -f /etc/sudoers.d/vscode && \
