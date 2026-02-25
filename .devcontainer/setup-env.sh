@@ -1,10 +1,9 @@
 #!/bin/bash
-# Post-create environment setup. Deploys hooks globally and checks auth.
+# Post-create environment setup. Deploys hooks globally, loads credentials, registers MCP.
+# Output is compact — run `sandbox-status` for full diagnostics.
 set -e
 
 # Set up writable git config that includes the read-only mounted .gitconfig
-# The host .gitconfig is mounted read-only at ~/.gitconfig; we point git to a
-# writable file that [include]s it so `git config --global` works.
 WRITABLE_GITCONFIG="/home/vscode/.gitconfig-local"
 if [ ! -f "$WRITABLE_GITCONFIG" ]; then
     if [ -f /home/vscode/.gitconfig ]; then
@@ -15,8 +14,11 @@ if [ ! -f "$WRITABLE_GITCONFIG" ]; then
 fi
 export GIT_CONFIG_GLOBAL="$WRITABLE_GITCONFIG"
 
-# Load credentials: first check for previously saved 1Password credentials,
-# then try live 1Password auth (service account or cached session)
+if ! grep -q "GIT_CONFIG_GLOBAL" /home/vscode/.bashrc 2>/dev/null; then
+    echo 'export GIT_CONFIG_GLOBAL="/home/vscode/.gitconfig-local"' >> /home/vscode/.bashrc
+fi
+
+# Load credentials: saved 1Password exports, then live 1Password auth
 if [ -f /home/vscode/.op-credentials ]; then
     source /home/vscode/.op-credentials
 fi
@@ -24,12 +26,7 @@ if [ -f /usr/local/bin/setup-1password.sh ]; then
     source /usr/local/bin/setup-1password.sh
 fi
 
-# Make it persistent across shells
-if ! grep -q "GIT_CONFIG_GLOBAL" /home/vscode/.bashrc 2>/dev/null; then
-    echo 'export GIT_CONFIG_GLOBAL="/home/vscode/.gitconfig-local"' >> /home/vscode/.bashrc
-fi
-
-# Deploy hooks from the repo into user-level Claude config (global for all repos in container)
+# Deploy hooks from the repo into user-level Claude config
 mkdir -p /home/vscode/.claude/hooks
 if [ -d /workspace/.claude/hooks ] && ls /workspace/.claude/hooks/*.sh >/dev/null 2>&1; then
     cp /workspace/.claude/hooks/*.sh /home/vscode/.claude/hooks/
@@ -98,45 +95,9 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
 SETTINGS
 fi
 
-# Register MCP servers via claude CLI (handles config location/format automatically)
-# Uses ${VAR} references (expanded by Claude Code at runtime) so no plaintext secrets on disk.
-# Servers are removed then re-added on every run so stale entries are cleaned up.
-MCP_MANAGED="confluence jira bitbucket github"
-MCP_SERVERS=""
-
-# Remove managed servers (clean slate — prevents stale entries when credentials are removed)
-for server in $MCP_MANAGED; do
-    claude mcp remove "$server" 2>/dev/null || true
-done
-
-rm -f /home/vscode/.claude/.mcp.json
-
-if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
-    claude mcp add-json confluence '{"type":"stdio","command":"npx","args":["-y","@aashari/mcp-server-atlassian-confluence"],"env":{"ATLASSIAN_SITE_NAME":"${ATLASSIAN_SITE_NAME}","ATLASSIAN_USER_EMAIL":"${ATLASSIAN_USER_EMAIL}","ATLASSIAN_API_TOKEN":"${ATLASSIAN_API_TOKEN}"}}' --scope user
-    MCP_SERVERS="$MCP_SERVERS confluence"
-fi
-
-if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${ATLASSIAN_API_TOKEN:-}" ] && [ -n "${ATLASSIAN_SITE_NAME:-}" ]; then
-    claude mcp add-json jira '{"type":"stdio","command":"npx","args":["-y","@aashari/mcp-server-atlassian-jira"],"env":{"ATLASSIAN_SITE_NAME":"${ATLASSIAN_SITE_NAME}","ATLASSIAN_USER_EMAIL":"${ATLASSIAN_USER_EMAIL}","ATLASSIAN_API_TOKEN":"${ATLASSIAN_API_TOKEN}"}}' --scope user
-    MCP_SERVERS="$MCP_SERVERS jira"
-fi
-
-if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
-    claude mcp add-json bitbucket '{"type":"stdio","command":"npx","args":["-y","@aashari/mcp-server-atlassian-bitbucket"],"env":{"ATLASSIAN_USER_EMAIL":"${ATLASSIAN_USER_EMAIL}","ATLASSIAN_API_TOKEN":"${BITBUCKET_API_TOKEN}"}}' --scope user
-    MCP_SERVERS="$MCP_SERVERS bitbucket"
-fi
-
-if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
-    claude mcp add-json github '{"type":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-github"],"env":{"GITHUB_PERSONAL_ACCESS_TOKEN":"${GITHUB_PERSONAL_ACCESS_TOKEN}"}}' --scope user
-    MCP_SERVERS="$MCP_SERVERS github"
-fi
-
-if [ -n "$MCP_SERVERS" ]; then
-    echo "MCP servers registered:$MCP_SERVERS"
-    echo "  Verify: claude mcp list"
-else
-    echo "MCP servers: none (set env vars on host to enable — see README)"
-fi
+# Credential-dependent setup (MCP servers, git credentials, gh auth)
+source /usr/local/bin/setup-credentials.sh
+setup_post_credentials
 
 # Deploy global CLAUDE.md (only if none exists yet)
 if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
@@ -148,17 +109,6 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 CLAUDEMD
 fi
 
-# Configure git credential helper for Bitbucket HTTPS push/pull
-if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
-    git config --global credential.https://bitbucket.org.helper store
-    # Bitbucket scoped API tokens require x-bitbucket-api-token-auth as the username
-    cat > /home/vscode/.git-credentials << CREDS
-https://x-bitbucket-api-token-auth:${BITBUCKET_API_TOKEN}@bitbucket.org
-CREDS
-    chmod 600 /home/vscode/.git-credentials
-    echo "Bitbucket git HTTPS: configured"
-fi
-
 mkdir -p /home/vscode/.local/share/renv
 git config --global --add safe.directory /workspace
 
@@ -167,33 +117,21 @@ if ! grep -q "HISTFILE=/commandhistory/.bash_history" /home/vscode/.bashrc 2>/de
     echo 'export HISTFILE=/commandhistory/.bash_history' >> /home/vscode/.bashrc
 fi
 
-echo ""
-echo "Tools: R $(R --version 2>/dev/null | head -1 | grep -oP 'version \K[^ ]+' || echo '?'), Node $(node --version 2>/dev/null || echo '?'), Python $(python3 --version 2>/dev/null | grep -oP '\d+\.\S+' || echo '?'), Claude $(claude --version 2>/dev/null || echo '?')"
-
-# Auth status (covers env vars, 1Password, and manual login)
-if [ -n "${SSH_AUTH_SOCK:-}" ]; then
-    KEY_COUNT=$(ssh-add -l 2>/dev/null | grep -c "SHA256" || true)
-    [[ "$KEY_COUNT" -gt 0 ]] && echo "SSH agent: $KEY_COUNT key(s)" || echo "SSH agent: socket exists but no keys loaded"
-else
-    echo "SSH agent: not available (run setup-1password to load keys from 1Password, or use HTTPS)"
-fi
-
-if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && ! gh auth status >/dev/null 2>&1; then
-    echo "$GITHUB_PERSONAL_ACCESS_TOKEN" | gh auth login --with-token 2>/dev/null
-fi
-gh auth status >/dev/null 2>&1 && echo "GitHub CLI: authenticated" || echo "GitHub CLI: not authenticated (run gh auth login)"
-
-echo ""
-echo "Credential status:"
+# Compact startup summary
+CRED_COUNT=0
+CRED_TOTAL=0
 for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
            ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
-    if [ -n "${!var:-}" ]; then
-        echo "  $var: set"
-    else
-        echo "  $var: NOT SET"
-    fi
+    CRED_TOTAL=$((CRED_TOTAL + 1))
+    [ -n "${!var:-}" ] && CRED_COUNT=$((CRED_COUNT + 1))
 done
 
+MCP_SUMMARY="${MCP_SERVERS:- none}"
+
+API_STATUS="set"
+[ -z "${ANTHROPIC_API_KEY:-}" ] && API_STATUS="NOT SET"
+
 echo ""
-echo "Aliases: cc = claude --dangerously-skip-permissions"
-echo "Ready. Run: cc"
+echo "Claude Sandbox ready. Run: cc"
+echo "  API key: ${API_STATUS} | Credentials: ${CRED_COUNT}/${CRED_TOTAL} | MCP:${MCP_SUMMARY}"
+echo "  Run 'sandbox-status' for full details."

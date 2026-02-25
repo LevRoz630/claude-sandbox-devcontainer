@@ -75,14 +75,17 @@ WORKDIR /workspace
 
 # Copy firewall + env setup scripts
 # Strip CRLF: Windows working tree may have \r despite .gitattributes eol=lf
-COPY init-firewall.sh /usr/local/bin/
-COPY setup-env.sh /usr/local/bin/
-COPY setup-1password.sh /usr/local/bin/
+COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh /usr/local/bin/
 USER root
-RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh && \
-    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh /usr/local/bin/setup-1password.sh && \
+RUN sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
+        /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
+        /usr/local/bin/sandbox-status.sh && \
+    chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
+        /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
+        /usr/local/bin/sandbox-status.sh && \
     printf '#!/bin/bash\nexec /usr/local/bin/setup-1password.sh --interactive "$@"\n' > /usr/local/bin/setup-1password && \
-    chmod +x /usr/local/bin/setup-1password
+    printf '#!/bin/bash\nexec /usr/local/bin/sandbox-status.sh "$@"\n' > /usr/local/bin/sandbox-status && \
+    chmod +x /usr/local/bin/setup-1password /usr/local/bin/sandbox-status
 
 # Lock down sudo: base image grants NOPASSWD:ALL, restrict to firewall + op config ownership fix
 RUN rm -f /etc/sudoers.d/vscode && \
