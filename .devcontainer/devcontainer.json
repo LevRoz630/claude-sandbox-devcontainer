@@ -51,7 +51,8 @@
     "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
 
     // .gitconfig readonly (name/email only); SSH via agent forwarding; gh via `gh auth login`
-    "source=${localEnv:HOME:${localEnv:USERPROFILE}}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
+    // HOME is set on Linux/macOS natively and on Windows by Git for Windows
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
