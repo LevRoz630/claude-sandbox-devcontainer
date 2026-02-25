@@ -2,11 +2,20 @@
 # Container startup: git config, hooks, credentials, MCP. Runs on every start.
 set -euo pipefail
 
-# Writable git config that [include]s the readonly host mount
+# Writable git config derived from readonly host mount.
+# We copy (not [include]) the host config, stripping [credential] and [url] sections
+# that break in-container auth (e.g. 1Password op-plugin hangs, SSH insteadOf rewrites
+# bypass HTTPS credential flow). User identity, core, alias, etc. are preserved.
 WRITABLE_GITCONFIG="/home/vscode/.gitconfig-local"
-if [ ! -f "$WRITABLE_GITCONFIG" ]; then
+if [ ! -f "$WRITABLE_GITCONFIG" ] || grep -q '^\[include\]' "$WRITABLE_GITCONFIG" 2>/dev/null; then
+    # (Re)generate: first run or migrating from old [include]-based config
     if [ -f /home/vscode/.gitconfig ]; then
-        echo -e "[include]\n\tpath = /home/vscode/.gitconfig" > "$WRITABLE_GITCONFIG"
+        awk '
+        /^\[url /        { skip=1; next }
+        /^\[credential/  { skip=1; next }
+        /^\[/            { skip=0 }
+        !skip            { print }
+        ' /home/vscode/.gitconfig > "$WRITABLE_GITCONFIG"
     else
         touch "$WRITABLE_GITCONFIG"
     fi
@@ -85,10 +94,9 @@ fi
 
 git config --global --add safe.directory /workspace
 
-# Fix git push from terminal: VS Code's credential helper hangs outside VS Code,
-# and the host's op-plugin helper fails without biometric. Reset the chain and use gh CLI.
-git config --global --replace-all credential.helper ''
-git config --global --add credential.helper '!/usr/bin/gh auth git-credential'
+# Container credential helper: gh CLI (host's op-plugin/VS Code helpers were stripped
+# during gitconfig copy above; this ensures gh is always set even after rebuilds)
+git config --global credential.helper '!/usr/bin/gh auth git-credential'
 
 if ! grep -q "HISTFILE=/commandhistory/.bash_history" /home/vscode/.bashrc 2>/dev/null; then
     echo 'export PROMPT_COMMAND="history -a"' >> /home/vscode/.bashrc
