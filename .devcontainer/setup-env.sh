@@ -85,6 +85,11 @@ fi
 
 git config --global --add safe.directory /workspace
 
+# Fix git push from terminal: VS Code's credential helper hangs outside VS Code,
+# and the host's op-plugin helper fails without biometric. Reset the chain and use gh CLI.
+git config --global --replace-all credential.helper ''
+git config --global --add credential.helper '!/usr/bin/gh auth git-credential'
+
 if ! grep -q "HISTFILE=/commandhistory/.bash_history" /home/vscode/.bashrc 2>/dev/null; then
     echo 'export PROMPT_COMMAND="history -a"' >> /home/vscode/.bashrc
     echo 'export HISTFILE=/commandhistory/.bash_history' >> /home/vscode/.bashrc
