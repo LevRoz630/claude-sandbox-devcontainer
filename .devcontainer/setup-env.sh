@@ -1,6 +1,6 @@
 #!/bin/bash
 # Container startup: git config, hooks, credentials, MCP. Runs on every start.
-set -e
+set -euo pipefail
 
 # Writable git config that [include]s the readonly host mount
 WRITABLE_GITCONFIG="/home/vscode/.gitconfig-local"
@@ -16,9 +16,16 @@ if ! grep -q "GIT_CONFIG_GLOBAL" /home/vscode/.bashrc 2>/dev/null; then
     echo 'export GIT_CONFIG_GLOBAL="/home/vscode/.gitconfig-local"' >> /home/vscode/.bashrc
 fi
 
-# Credentials (1Password or env vars)
-[ -f /home/vscode/.op-credentials ] && source /home/vscode/.op-credentials
+# Credentials (1Password or env vars) — tmpfs (RAM-only)
+[ -f /run/credentials/op-env ] && source /run/credentials/op-env
 [ -f /usr/local/bin/setup-1password.sh ] && source /usr/local/bin/setup-1password.sh || true
+
+# GH_TOKEN for new shells (env var, no file written)
+if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
+    if ! grep -q 'GH_TOKEN' /home/vscode/.bashrc 2>/dev/null; then
+        echo 'export GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-}"' >> /home/vscode/.bashrc
+    fi
+fi
 
 # Deploy hooks globally
 mkdir -p /home/vscode/.claude/hooks

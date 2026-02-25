@@ -103,8 +103,9 @@ load_credentials() {
             || echo "    (could not list)"
     fi
 
-    # Persist for new shells
-    local _creds="/home/vscode/.op-credentials"
+    # Persist for new shells — tmpfs (RAM-only, never written to disk)
+    local _creds="/run/credentials/op-env"
+    mkdir -p -m 700 /run/credentials
     local _vars=(ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL
                  ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN)
     : > "$_creds"
@@ -112,8 +113,8 @@ load_credentials() {
         [ -n "${!var:-}" ] && printf 'export %s=%q\n' "$var" "${!var}" >> "$_creds"
     done
     chmod 600 "$_creds"
-    if ! grep -q '\.op-credentials' /home/vscode/.bashrc 2>/dev/null; then
-        echo '[ -f ~/.op-credentials ] && source ~/.op-credentials' >> /home/vscode/.bashrc
+    if ! grep -q '/run/credentials/op-env' /home/vscode/.bashrc 2>/dev/null; then
+        echo '[ -f /run/credentials/op-env ] && source /run/credentials/op-env' >> /home/vscode/.bashrc
     fi
 }
 

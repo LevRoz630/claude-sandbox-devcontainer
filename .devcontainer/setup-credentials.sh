@@ -31,17 +31,24 @@ setup_mcp_servers() {
 
 setup_git_credentials() {
     if [ -n "${ATLASSIAN_USER_EMAIL:-}" ] && [ -n "${BITBUCKET_API_TOKEN:-}" ]; then
-        git config --global credential.https://bitbucket.org.helper store
-        cat > /home/vscode/.git-credentials << CREDS
-https://x-bitbucket-api-token-auth:${BITBUCKET_API_TOKEN}@bitbucket.org
+        # Use credential-cache (in-memory daemon) instead of credential-store (plaintext file)
+        git config --global credential.https://bitbucket.org.helper cache
+        git credential-cache store <<CREDS
+protocol=https
+host=bitbucket.org
+username=x-bitbucket-api-token-auth
+password=${BITBUCKET_API_TOKEN}
+
 CREDS
-        chmod 600 /home/vscode/.git-credentials
     fi
+    # Clean up any legacy plaintext credential file
+    rm -f /home/vscode/.git-credentials
 }
 
 setup_gh_auth() {
-    if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && ! gh auth status >/dev/null 2>&1; then
-        echo "$GITHUB_PERSONAL_ACCESS_TOKEN" | gh auth login --with-token 2>/dev/null
+    # Use GH_TOKEN env var instead of gh auth login (avoids writing token to disk)
+    if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
+        export GH_TOKEN="$GITHUB_PERSONAL_ACCESS_TOKEN"
     fi
 }
 

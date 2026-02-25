@@ -18,7 +18,7 @@ case "$TOOL" in
 esac
 
 STATE_DIR="${CLAUDE_HOOK_STATE_DIR:-/tmp}/claude-hooks-${SESSION}"
-mkdir -p "$STATE_DIR"
+mkdir -p -m 700 "$STATE_DIR"
 
 HASH=$(printf '%s\n%s' "$TOOL" "$COMMAND" | sha256sum | cut -d' ' -f1)
 STATE_FILE="${STATE_DIR}/dedup-${HASH}"

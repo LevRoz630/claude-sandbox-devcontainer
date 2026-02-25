@@ -33,6 +33,7 @@ command -v ipset >/dev/null 2>&1 && pass "ipset available" || fail "ipset not fo
 command -v dig >/dev/null 2>&1 && pass "dig available" || fail "dig not found"
 command -v aggregate >/dev/null 2>&1 && pass "aggregate available" || fail "aggregate not found"
 command -v fzf >/dev/null 2>&1 && pass "fzf available" || fail "fzf not found"
+command -v op >/dev/null 2>&1 && pass "op (1Password CLI) available" || fail "op not found"
 
 section "3. R + renv"
 
@@ -72,12 +73,24 @@ fi
 
 if [[ -f /home/vscode/.config/gh/hosts.yml ]]; then
     if grep -q "oauth_token" /home/vscode/.config/gh/hosts.yml 2>/dev/null; then
-        fail "GitHub OAuth token found in hosts.yml"
+        fail "GitHub OAuth token found in hosts.yml (use GH_TOKEN env var instead)"
     else
         pass "gh hosts.yml exists but no oauth_token"
     fi
 else
     pass "No pre-existing gh hosts.yml"
+fi
+
+if [[ -f /home/vscode/.op-credentials ]]; then
+    fail "Plaintext credentials found at ~/.op-credentials (should use /run/credentials/op-env)"
+else
+    pass "No legacy ~/.op-credentials file"
+fi
+
+if [[ -f /home/vscode/.git-credentials ]]; then
+    fail "Plaintext git credentials at ~/.git-credentials (should use credential-cache)"
+else
+    pass "No plaintext ~/.git-credentials file"
 fi
 
 if ls /tmp/.ssh-setup/* 2>/dev/null | head -1 | grep -q .; then
