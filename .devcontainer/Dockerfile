@@ -81,6 +81,8 @@ RUN rm -f /etc/sudoers.d/vscode && \
     printf '%s\n' \
       "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh, /etc/init.d/ssh start" \
       "vscode ALL=(root) NOPASSWD: /usr/bin/chown -R vscode\:vscode /home/vscode/.config/op" \
+      "vscode ALL=(root) NOPASSWD: /usr/bin/mkdir -p -m 700 /run/credentials" \
+      "vscode ALL=(root) NOPASSWD: /usr/bin/chown vscode\:vscode /run/credentials" \
     > /etc/sudoers.d/firewall && \
     chmod 0440 /etc/sudoers.d/firewall
 

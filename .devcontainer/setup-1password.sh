@@ -105,7 +105,8 @@ load_credentials() {
 
     # Persist for new shells — tmpfs (RAM-only, never written to disk)
     local _creds="/run/credentials/op-env"
-    mkdir -p -m 700 /run/credentials
+    sudo /usr/bin/mkdir -p -m 700 /run/credentials
+    sudo /usr/bin/chown vscode:vscode /run/credentials
     local _vars=(ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL
                  ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN)
     : > "$_creds"
