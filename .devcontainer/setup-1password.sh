@@ -142,12 +142,19 @@ interactive_signin() {
     if op_has_account; then
         echo "1Password account found. Enter your master password:"
         echo ""
-        if eval "$(op signin)"; then
+        local _signin_err _signin_token _shorthand
+        _signin_err=$(mktemp)
+        if _signin_token=$(op signin --raw 2>"$_signin_err") && [ -n "$_signin_token" ]; then
+            _shorthand=$(jq -r '.latest_signin // "my"' "$OP_CONFIG_DIR/config" 2>/dev/null || echo "my")
+            export "OP_SESSION_${_shorthand}=${_signin_token}"
+            rm -f "$_signin_err"
             echo ""
             echo "Signed in."
             return 0
         else
             echo "ERROR: signin failed." >&2
+            head -1 "$_signin_err" | sed 's/\[ERROR\] [0-9/: ]*//' >&2
+            rm -f "$_signin_err"
             return 1
         fi
     fi
@@ -182,12 +189,20 @@ interactive_signin() {
             read -rp "Secret key: " op_secret_key
             [ -z "$op_secret_key" ] && { echo "ERROR: required." >&2; return 1; }
             echo ""
-            if eval "$(op account add --address "$op_address" --email "$op_email" --secret-key "$op_secret_key" --signin)"; then
+            local _add_err _add_token
+            _add_err=$(mktemp)
+            if _add_token=$(op account add --address "$op_address" --email "$op_email" --secret-key "$op_secret_key" --signin --raw 2>"$_add_err") && [ -n "$_add_token" ]; then
+                local _shorthand
+                _shorthand=$(jq -r '.latest_signin // "my"' "$OP_CONFIG_DIR/config" 2>/dev/null || echo "my")
+                export "OP_SESSION_${_shorthand}=${_add_token}"
+                rm -f "$_add_err"
                 echo ""
                 echo "Signed in."
                 return 0
             else
                 echo "ERROR: signin failed." >&2
+                head -1 "$_add_err" | sed 's/\[ERROR\] [0-9/: ]*//' >&2
+                rm -f "$_add_err"
                 return 1
             fi
             ;;
