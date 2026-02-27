@@ -37,17 +37,24 @@ op_authed() {
 }
 
 # Read a 1Password field into env var (skips if already set)
+# Sets _op_err_msg on failure for caller to display.
 op_fill() {
     local var_name="$1" op_ref="$2"
     [ -n "${!var_name:-}" ] && return 0
     local val
-    val=$(op read "$op_ref" 2>/dev/null) || return 1
+    _op_err_msg=""
+    val=$(op read "$op_ref" 2>"$_op_errfile") || {
+        _op_err_msg=$(head -1 "$_op_errfile" | sed 's/\[ERROR\] [0-9/: ]*//')
+        return 1
+    }
     [ -n "$val" ] && export "$var_name=$val"
 }
 
 load_credentials() {
     echo "Loading credentials from vault '${VAULT}'..."
     local loaded=0 failed=0
+    _op_errfile=$(mktemp)
+    trap 'rm -f "$_op_errfile"' RETURN
 
     for pair in \
         "ANTHROPIC_API_KEY:op://${VAULT}/Anthropic API Key/credential" \
@@ -64,7 +71,11 @@ load_credentials() {
             echo "  $var: loaded"
             loaded=$((loaded + 1))
         else
-            echo "  $var: not found in vault"
+            if [ -n "${_op_err_msg:-}" ]; then
+                echo "  $var: FAILED — ${_op_err_msg}"
+            else
+                echo "  $var: not found in vault"
+            fi
             failed=$((failed + 1))
         fi
     done
@@ -97,10 +108,18 @@ load_credentials() {
         echo "    'Bitbucket Token' (credential), 'GitHub Token' (token)"
         echo ""
         echo "  Actual items:"
-        op item list --vault "$VAULT" --format=json 2>/dev/null \
+        local _list_err
+        _list_err=$(mktemp)
+        if op item list --vault "$VAULT" --format=json 2>"$_list_err" \
             | jq -r '.[].title // empty' 2>/dev/null \
-            | while read -r title; do echo "    - $title"; done \
-            || echo "    (could not list)"
+            | while read -r title; do echo "    - $title"; done; then
+            :
+        else
+            local _lerr
+            _lerr=$(head -1 "$_list_err" | sed 's/\[ERROR\] [0-9/: ]*//')
+            echo "    (could not list${_lerr:+: $_lerr})"
+        fi
+        rm -f "$_list_err"
     fi
 
     # Persist for new shells — tmpfs (RAM-only, never written to disk)
