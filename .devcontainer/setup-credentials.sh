@@ -49,6 +49,8 @@ setup_gh_auth() {
     # Use GH_TOKEN env var instead of gh auth login (avoids writing token to disk)
     if [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
         export GH_TOKEN="$GITHUB_PERSONAL_ACCESS_TOKEN"
+        # Configure git to use gh as the credential helper for GitHub HTTPS remotes
+        gh auth setup-git
     fi
 }
 
