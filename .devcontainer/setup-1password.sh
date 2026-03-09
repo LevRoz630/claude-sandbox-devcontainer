@@ -6,6 +6,10 @@
 #   Interactive (`setup-1password`): guided op account add / op signin
 #
 # Account config persists in Docker volume at ~/.config/op.
+#
+# Credential pickup: the `cc` alias sources /run/credentials/op-env before
+# launching Claude, so credentials loaded here are available to MCP servers
+# even if setup-1password ran after the previous shell started.
 set -uo pipefail
 
 # Fix op config dir ownership/perms (Docker volumes may init as root; op requires 700)

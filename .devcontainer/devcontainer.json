@@ -50,9 +50,6 @@
     // Volume, not bind — Windows bind mounts get 777 perms, op CLI rejects them
     "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
 
-    // Readonly; HOME works on Linux/macOS/Windows (Git for Windows sets it)
-    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
-
     // RAM-only credentials — never persisted to disk (cleared on container stop)
     "target=/run/credentials,type=tmpfs"
   ],

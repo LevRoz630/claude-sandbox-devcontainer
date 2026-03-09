@@ -92,4 +92,4 @@ ENV HISTFILE=/commandhistory/.bash_history
 ENV EDITOR=nano
 ENV VISUAL=nano
 
-RUN echo "alias cc='claude --dangerously-skip-permissions'" >> /home/vscode/.bashrc
+RUN echo "alias cc='{ [ -f /run/credentials/op-env ] && source /run/credentials/op-env; } 2>/dev/null; claude --dangerously-skip-permissions'" >> /home/vscode/.bashrc
