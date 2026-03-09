@@ -15,6 +15,9 @@ Devcontainer for running Claude Code with `--dangerously-skip-permissions`. Ubun
 - iptables/ipset firewall
 - R 4.x + renv, Node 20, Python 3 + Poetry
 
+## Git
+- Never add Co-Authored-By lines to git commits
+
 ## Conventions
 - Tests use `pass()`/`fail()`/`skip()` with summary counts
 - Firewall allowlist in `.devcontainer/init-firewall.sh`
