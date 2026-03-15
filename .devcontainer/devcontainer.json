@@ -46,6 +46,7 @@
     "source=claude-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     "source=claude-renv-cache-${devcontainerId},target=/home/vscode/.local/share/renv,type=volume",
+    "source=claude-r-library-${devcontainerId},target=/home/vscode/R/library,type=volume",
     "source=claude-gh-config-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
     // Volume, not bind — Windows bind mounts get 777 perms, op CLI rejects them
     "source=claude-op-config-${devcontainerId},target=/home/vscode/.config/op,type=volume",
@@ -57,6 +58,7 @@
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
     "RENV_PATHS_CACHE": "/home/vscode/.local/share/renv",
+    "R_LIBS_USER": "/home/vscode/R/library",
     "GIT_CONFIG_GLOBAL": "/home/vscode/.gitconfig-local",
     "DEVCONTAINER": "true",
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
