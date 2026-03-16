@@ -51,10 +51,6 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
       {
         "matcher": "Bash",
         "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/exfil-guard.sh"}]
-      },
-      {
-        "matcher": "",
-        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/dedup-check.sh"}]
       }
     ],
     "PostToolUse": [
