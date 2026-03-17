@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libcurl4-openssl-dev libssl-dev libxml2-dev \
   libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
   libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+  # Build tools & docs
+  cmake libx11-dev pandoc \
   # Python
   python3 python3-venv python3-pip pipx \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -39,6 +41,7 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
 # Poetry, renv, Claude Code
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
+ARG CLAUDE_CODE_CACHEBUST=1
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 # Git delta
