@@ -3,8 +3,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-echo "Configuring firewall..."
-
 # Preserve Docker DNS NAT before flushing
 DOCKER_DNS_RULES=$(iptables-save -t nat | grep "127\.0\.0\.11" || true)
 
@@ -46,23 +44,22 @@ iptables -A OUTPUT -o lo -j ACCEPT
 
 # DNS threat filtering (auto-detect Quad9)
 DNS_PRIMARY="${DNS_FILTER_PRIMARY:-auto}"
+DNS_LABEL="off"
 if [ "$DNS_PRIMARY" = "auto" ]; then
     if dig +short +timeout=3 github.com @9.9.9.9 >/dev/null 2>&1; then
         DNS_PRIMARY="9.9.9.9"
-        echo "DNS filtering: Quad9"
+        DNS_LABEL="Quad9"
     else
         DNS_PRIMARY=""
-        echo "DNS filtering: skipped (Quad9 unreachable)"
     fi
 elif [ "$DNS_PRIMARY" = "none" ]; then
     DNS_PRIMARY=""
-    echo "DNS filtering: disabled"
 else
     if [[ ! "$DNS_PRIMARY" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         echo "ERROR: DNS_FILTER_PRIMARY='$DNS_PRIMARY' is not a valid IPv4 address"
         exit 1
     fi
-    echo "DNS filtering: $DNS_PRIMARY"
+    DNS_LABEL="$DNS_PRIMARY"
 fi
 
 if [ -n "$DNS_PRIMARY" ]; then
@@ -163,4 +160,4 @@ if ! curl --connect-timeout 5 https://api.github.com/zen >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "Firewall active."
+echo "Firewall: active (DNS: ${DNS_LABEL})"
