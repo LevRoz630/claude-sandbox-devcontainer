@@ -40,7 +40,7 @@ jobs:
 
       # ── Image vulnerability scan (OS packages + language deps) ──
       - name: Trivy image scan (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 pinned by SHA (CVE-2026-33634)
         with:
           image-ref: devcontainer-sandbox:scan
           format: sarif
@@ -67,7 +67,7 @@ jobs:
 
       # ── Fail on fixable CRITICAL vulnerabilities ──
       - name: Trivy image scan (fail on fixable CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 pinned by SHA (CVE-2026-33634)
         with:
           image-ref: devcontainer-sandbox:scan
           format: table
@@ -78,7 +78,7 @@ jobs:
 
       # ── Dockerfile misconfiguration scan ──
       - name: Trivy Dockerfile misconfig scan (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 pinned by SHA (CVE-2026-33634)
         if: always()
         with:
           scan-type: config
@@ -97,7 +97,7 @@ jobs:
 
       # ── License scan (flag GPL/AGPL in dependencies) ──
       - name: Trivy license scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 pinned by SHA (CVE-2026-33634)
         if: always()
         with:
           image-ref: devcontainer-sandbox:scan
@@ -108,7 +108,7 @@ jobs:
 
       # ── Secret scan across the repo ──
       - name: Trivy secret scan (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 pinned by SHA (CVE-2026-33634)
         if: always()
         with:
           scan-type: fs
