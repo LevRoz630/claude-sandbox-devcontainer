@@ -42,7 +42,11 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
 ARG CLAUDE_CODE_CACHEBUST=1
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
+    @modelcontextprotocol/server-github \
+    @aashari/mcp-server-atlassian-confluence \
+    @aashari/mcp-server-atlassian-jira \
+    @aashari/mcp-server-atlassian-bitbucket
 
 # Git delta
 ARG GIT_DELTA_VERSION=0.18.2

@@ -100,6 +100,7 @@ done < <(echo "$gh_ranges" | jq -r '(.web + .api + .git)[]' | aggregate -q)
 ALLOWED_DOMAINS=(
     "api.anthropic.com"
     "statsig.anthropic.com"
+    "mcp-proxy.anthropic.com"
     "sentry.io"
     "registry.npmjs.org"
     "cloud.r-project.org"

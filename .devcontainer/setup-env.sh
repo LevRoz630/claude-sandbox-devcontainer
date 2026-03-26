@@ -75,6 +75,23 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
 SETTINGS
 fi
 
+# Fix auto-updates: Dockerfile installs via npm, not native installer
+CLAUDE_JSON="/home/vscode/.claude/.claude.json"
+if [ -f "$CLAUDE_JSON" ]; then
+    python3 -c "
+import json, sys
+with open('$CLAUDE_JSON') as f: d = json.load(f)
+changed = False
+if d.get('installMethod') != 'npm':
+    d['installMethod'] = 'npm'; changed = True
+if d.get('autoUpdates') != True:
+    d['autoUpdates'] = True; changed = True
+if changed:
+    with open('$CLAUDE_JSON', 'w') as f: json.dump(d, f, indent=2)
+    print('Claude auto-update config patched')
+"
+fi
+
 # MCP servers, git credentials, gh auth
 source /usr/local/bin/setup-credentials.sh
 setup_post_credentials
