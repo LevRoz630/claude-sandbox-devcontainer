@@ -27,6 +27,10 @@ setup_mcp_servers() {
         claude mcp add-json github '{"type":"stdio","command":"mcp-server-github","env":{"GITHUB_PERSONAL_ACCESS_TOKEN":"${GITHUB_PERSONAL_ACCESS_TOKEN}"}}' --scope user
         MCP_SERVERS="$MCP_SERVERS github"
     fi
+
+    # Context7: live library docs (no credentials required)
+    claude mcp add-json context7 '{"type":"http","url":"https://mcp.context7.com/mcp"}' --scope user
+    MCP_SERVERS="$MCP_SERVERS context7"
 }
 
 setup_git_credentials() {

@@ -128,6 +128,37 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 - If I ask "why", point me to relevant files/docs rather than explaining directly.
 - Never implement more than one plan step without checking in.
 - Keep responses concise — no walls of text. If it takes more than a short paragraph, break it into a conversation.
+
+## Debugging — Root Cause First
+
+- NO fixes without root cause investigation. Read errors, reproduce, trace data flow.
+- Phase 1: Evidence (error messages, stack traces, recent changes, data flow tracing)
+- Phase 2: Pattern analysis (find working examples, compare differences)
+- Phase 3: Single hypothesis, test one variable at a time
+- Phase 4: Implement fix, verify without breaking other tests
+- After 3 failed fix attempts: STOP. Do not attempt fix #4 — discuss architecture with me.
+- Red flags (stop immediately): "quick fix for now", "just try changing X", multiple changes at once.
+
+## Verification — No Claims Without Evidence
+
+- Never claim work is complete without running verification commands in the current session.
+- Gate: identify the proving command → run it fresh → read full output → confirm it matches the claim → only then state completion.
+- Red flags: "should work", "probably fine", "done!" before running anything, trusting agent reports without independent verification.
+- Applies before: any success claim, commits, PRs, marking tasks complete.
+
+## Parallel Agents — Two-Stage Review
+
+- When dispatching subagents for plan tasks, use two-stage review:
+  1. Spec compliance — does the output match the plan/requirements?
+  2. Code quality — is it clean, safe, and maintainable?
+- Do not merge subagent output that fails either stage.
+
+## Code Review — Review Against the Plan
+
+- When reviewing code (own or subagent), review against the original plan/spec, not just general quality.
+- Check: does every plan requirement have a corresponding implementation?
+- Check: are there implementations that weren't in the plan (scope creep)?
+- Use `/fresh-review` or `claude --worktree review` for unbiased review in isolated context.
 CLAUDEMD
 fi
 
@@ -158,3 +189,9 @@ echo ""
 echo "Claude Sandbox ready. Run: cc"
 echo "  API key: ${API_STATUS} | Credentials: ${CRED_COUNT}/${CRED_TOTAL} | MCP:${MCP_SERVERS:- none}"
 echo "  Run 'sandbox-status' for full details."
+echo ""
+echo "  Recommended plugins (run inside Claude Code):"
+echo "    /plugin install claude-md-management@claude-plugins-official"
+echo "    /plugin install claude-code-setup@claude-plugins-official"
+echo "    /plugin install hookify@claude-plugins-official"
+echo "  Language servers: pyright-lsp, typescript-lsp, ruby-lsp, rust-analyzer-lsp"

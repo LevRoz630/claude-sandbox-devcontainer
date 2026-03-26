@@ -117,6 +117,7 @@ ALLOWED_DOMAINS=(
     "my.1password.ca"
     "cache.agilebits.com"
     "downloads.1password.com"
+    "mcp.context7.com"
 )
 
 if [ -n "${FIREWALL_EXTRA_DOMAINS:-}" ]; then
