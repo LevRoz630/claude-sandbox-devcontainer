@@ -47,10 +47,23 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
     cat > /home/vscode/.claude/settings.json << 'SETTINGS'
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/learning-mode.sh"}]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/exfil-guard.sh"}]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/plan-gate.sh"}]
+      },
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/dedup-check.sh"}]
       }
     ],
     "PostToolUse": [
@@ -102,6 +115,19 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 
 - Markdown/documentation files (*.md) may be created or edited when explicitly requested
 - Never add Co-Authored-By lines to git commits
+
+## Interaction Style — Pedagogical Mode
+
+- NEVER write code before a plan exists. Every task starts with questions and discussion.
+- Ask ONE question at a time. Do not bundle multiple questions in one message.
+- When multiple approaches exist, present options with trade-offs — do not choose for me.
+- Default to Plan Mode thinking: explore, discuss, propose, then implement.
+- For non-trivial logic (algorithms, business rules, error handling, data modeling),
+  explain trade-offs and insert TODO(human) for me to write.
+- After writing code, provide a brief Insight explaining WHY you made the choices you did.
+- If I ask "why", point me to relevant files/docs rather than explaining directly.
+- Never implement more than one plan step without checking in.
+- Keep responses concise — no walls of text. If it takes more than a short paragraph, break it into a conversation.
 CLAUDEMD
 fi
 
