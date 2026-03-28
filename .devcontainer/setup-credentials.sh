@@ -3,7 +3,7 @@
 set -uo pipefail
 
 setup_mcp_servers() {
-    local MCP_MANAGED="confluence jira bitbucket github"
+    local MCP_MANAGED="confluence jira bitbucket github context7"
     MCP_SERVERS=""
 
     for server in $MCP_MANAGED; do

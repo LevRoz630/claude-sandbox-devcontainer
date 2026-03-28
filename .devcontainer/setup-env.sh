@@ -1,6 +1,7 @@
 #!/bin/bash
 # Container startup: git config, hooks, credentials, MCP. Runs on every start.
 set -euo pipefail
+source /usr/local/bin/devcontainer-lib.sh
 
 # Writable git config derived from readonly host mount.
 # We copy (not [include]) the host config, stripping [credential] and [url] sections
@@ -43,8 +44,8 @@ if [ -d /workspace/.claude/hooks ] && ls /workspace/.claude/hooks/*.sh >/dev/nul
     chmod +x /home/vscode/.claude/hooks/*.sh
 fi
 
-if [ ! -f /home/vscode/.claude/settings.json ]; then
-    cat > /home/vscode/.claude/settings.json << 'SETTINGS'
+# Hooks template — baseline hook config for this container
+cat > /tmp/hooks-template.json << 'TEMPLATE'
 {
   "hooks": {
     "SessionStart": [
@@ -85,8 +86,18 @@ if [ ! -f /home/vscode/.claude/settings.json ]; then
     "Stop": []
   }
 }
-SETTINGS
+TEMPLATE
+
+if [ ! -f /home/vscode/.claude/settings.json ]; then
+    # First run: use template as-is
+    cp /tmp/hooks-template.json /home/vscode/.claude/settings.json
+else
+    # Merge: fill in any missing hook events from template, preserve existing ones
+    jq -s '.[1].hooks as $template | .[0] | .hooks = ($template + .hooks)' \
+        /home/vscode/.claude/settings.json /tmp/hooks-template.json > /tmp/settings-merged.json \
+        && mv /tmp/settings-merged.json /home/vscode/.claude/settings.json
 fi
+rm -f /tmp/hooks-template.json
 
 # Fix auto-updates: Dockerfile installs via npm, not native installer
 CLAUDE_JSON="/home/vscode/.claude/.claude.json"
@@ -175,10 +186,8 @@ fi
 
 # Startup summary
 CRED_COUNT=0
-CRED_TOTAL=0
-for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
-           ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
-    CRED_TOTAL=$((CRED_TOTAL + 1))
+CRED_TOTAL=${#CREDENTIAL_VARS[@]}
+for var in "${CREDENTIAL_VARS[@]}"; do
     [ -n "${!var:-}" ] && CRED_COUNT=$((CRED_COUNT + 1))
 done
 

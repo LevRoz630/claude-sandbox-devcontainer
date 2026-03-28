@@ -1,6 +1,7 @@
 #!/bin/bash
 # Full diagnostics for the Claude Code Sandbox. Run via: sandbox-status
 set -uo pipefail
+source /usr/local/bin/devcontainer-lib.sh
 
 echo "=== Claude Code Sandbox ==="
 echo ""
@@ -39,8 +40,7 @@ fi
 echo ""
 
 echo "Credentials:"
-for var in ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL \
-           ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN; do
+for var in "${CREDENTIAL_VARS[@]}"; do
     [ -n "${!var:-}" ] && echo "  $var: set" || echo "  $var: -"
 done
 echo ""

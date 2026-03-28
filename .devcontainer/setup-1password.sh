@@ -11,6 +11,7 @@
 # launching Claude, so credentials loaded here are available to MCP servers
 # even if setup-1password ran after the previous shell started.
 set -uo pipefail
+source /usr/local/bin/devcontainer-lib.sh
 
 # Fix op config dir ownership/perms (Docker volumes may init as root; op requires 700)
 OP_CONFIG_DIR="/home/vscode/.config/op"
@@ -130,10 +131,8 @@ load_credentials() {
     local _creds="/run/credentials/op-env"
     sudo /usr/bin/mkdir -p -m 700 /run/credentials
     sudo /usr/bin/chown vscode:vscode /run/credentials
-    local _vars=(ANTHROPIC_API_KEY ATLASSIAN_SITE_NAME ATLASSIAN_USER_EMAIL
-                 ATLASSIAN_API_TOKEN BITBUCKET_API_TOKEN GITHUB_PERSONAL_ACCESS_TOKEN)
     : > "$_creds"
-    for var in "${_vars[@]}"; do
+    for var in "${CREDENTIAL_VARS[@]}"; do
         [ -n "${!var:-}" ] && printf 'export %s=%q\n' "$var" "${!var}" >> "$_creds"
     done
     chmod 600 "$_creds"
