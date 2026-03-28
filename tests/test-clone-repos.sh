@@ -1,14 +1,8 @@
 #!/bin/bash
 # Tests for clone-repos.sh selection parsing and validation. No gh auth needed.
-set -uo pipefail
-
-PASS=0; FAIL=0; SKIP=0
-pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
-skip() { echo "  SKIP: $1"; SKIP=$((SKIP + 1)); }
-section() { echo ""; echo "=== $1 ==="; }
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/test-lib.sh"
+
 CLONE_SCRIPT=""
 for candidate in "${SCRIPT_DIR}/../.devcontainer/clone-repos.sh" "/usr/local/bin/clone-repos.sh"; do
     if [[ -f "$candidate" ]]; then
@@ -144,6 +138,4 @@ else
     [[ $RC -le 1 ]] && pass "Non-interactive stdin: exits cleanly" || fail "Non-interactive: exit $RC"
 fi
 
-echo ""
-echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
-[[ $FAIL -gt 0 ]] && exit 1 || exit 0
+results

@@ -2,13 +2,8 @@
 # Firewall validation tests. Run after init-firewall.sh inside the container.
 # Tests use network behavior (curl/dig), not sudo iptables, because sudoers
 # only allows init-firewall.sh.
-set -uo pipefail
-
-PASS=0; FAIL=0; SKIP=0
-pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
-skip() { echo "  SKIP: $1"; SKIP=$((SKIP + 1)); }
-section() { echo ""; echo "=== $1 ==="; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/test-lib.sh"
 
 section "1. Firewall Active (behavioral check)"
 
@@ -84,6 +79,4 @@ else
     skip "SSH to github.com:22 timed out (may be network issue)"
 fi
 
-echo ""
-echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
-[[ $FAIL -gt 0 ]] && exit 1 || exit 0
+results

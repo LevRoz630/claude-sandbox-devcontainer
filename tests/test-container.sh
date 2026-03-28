@@ -1,12 +1,7 @@
 #!/bin/bash
 # Container validation tests. Run inside the devcontainer.
-set -uo pipefail
-
-PASS=0; FAIL=0; SKIP=0
-pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
-fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
-skip() { echo "  SKIP: $1"; SKIP=$((SKIP + 1)); }
-section() { echo ""; echo "=== $1 ==="; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/test-lib.sh"
 
 section "1. Environment Variables"
 
@@ -140,6 +135,4 @@ section "9. DNS Resolution"
 dig +short api.anthropic.com 2>/dev/null | head -1 | grep -qE '^[0-9]+\.' && pass "DNS resolves api.anthropic.com" || fail "Cannot resolve api.anthropic.com"
 dig +short github.com 2>/dev/null | head -1 | grep -qE '^[0-9]+\.' && pass "DNS resolves github.com" || fail "Cannot resolve github.com"
 
-echo ""
-echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
-[[ $FAIL -gt 0 ]] && exit 1 || exit 0
+results
