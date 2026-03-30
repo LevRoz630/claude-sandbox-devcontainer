@@ -32,7 +32,7 @@ while IFS= read -r repo; do
 done <<< "$repos"
 
 echo ""
-echo "Enter numbers to clone (e.g., 1,3,5 or 1-3 or 'all'):"
+echo "Enter numbers (1,3,5 or 1-3), a search word, or 'all':"
 echo "Press Enter to skip."
 
 # Handle non-interactive terminals
@@ -48,30 +48,81 @@ if [ -z "$selection" ]; then
     exit 0
 fi
 
-# Parse selection
+# Parse selection into numeric indices from a given array
+# Usage: parse_numeric_selection "selection_string" array_elements...
+parse_numeric_selection() {
+    local sel="$1"
+    shift
+    local -a arr=("$@")
+    local -a result=()
+
+    if [ "$sel" = "all" ]; then
+        result=("${arr[@]}")
+    else
+        IFS=',' read -ra parts <<< "$sel"
+        for part in "${parts[@]}"; do
+            part="${part// /}"
+            if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                local start=${BASH_REMATCH[1]}
+                local end=${BASH_REMATCH[2]}
+                for ((j=start; j<=end; j++)); do
+                    local idx=$((j - 1))
+                    if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#arr[@]}" ]; then
+                        result+=("${arr[$idx]}")
+                    fi
+                done
+            elif [[ "$part" =~ ^[0-9]+$ ]]; then
+                local idx=$((part - 1))
+                if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#arr[@]}" ]; then
+                    result+=("${arr[$idx]}")
+                fi
+            fi
+        done
+    fi
+
+    printf '%s\n' "${result[@]}"
+}
+
 selected=()
 if [ "$selection" = "all" ]; then
     selected=("${repo_array[@]}")
-else
-    IFS=',' read -ra parts <<< "$selection"
-    for part in "${parts[@]}"; do
-        part=$(echo "$part" | tr -d ' ')
-        if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
-            start=${BASH_REMATCH[1]}
-            end=${BASH_REMATCH[2]}
-            for ((j=start; j<=end; j++)); do
-                idx=$((j - 1))
-                if [ $idx -ge 0 ] && [ $idx -lt ${#repo_array[@]} ]; then
-                    selected+=("${repo_array[$idx]}")
-                fi
-            done
-        elif [[ "$part" =~ ^[0-9]+$ ]]; then
-            idx=$((part - 1))
-            if [ $idx -ge 0 ] && [ $idx -lt ${#repo_array[@]} ]; then
-                selected+=("${repo_array[$idx]}")
-            fi
+elif [[ "$selection" =~ [a-zA-Z] ]]; then
+    # Word search: filter repos by case-insensitive substring match
+    search_term="${selection,,}"
+    declare -a matched=()
+    for repo in "${repo_array[@]}"; do
+        if [[ "${repo,,}" == *"$search_term"* ]]; then
+            matched+=("$repo")
         fi
     done
+
+    if [ ${#matched[@]} -eq 0 ]; then
+        echo "No repos matching '$selection'."
+        exit 0
+    fi
+
+    echo ""
+    echo "Repos matching '$selection':"
+    echo "------------------------------------------------"
+    for k in "${!matched[@]}"; do
+        echo "  $((k + 1))) ${matched[$k]}"
+    done
+    echo ""
+    echo "Enter numbers to clone (e.g., 1,3 or 1-2 or 'all'):"
+    read -r sub_selection
+
+    if [ -z "$sub_selection" ]; then
+        echo "No repos selected."
+        exit 0
+    fi
+
+    while IFS= read -r line; do
+        selected+=("$line")
+    done < <(parse_numeric_selection "$sub_selection" "${matched[@]}")
+else
+    while IFS= read -r line; do
+        selected+=("$line")
+    done < <(parse_numeric_selection "$selection" "${repo_array[@]}")
 fi
 
 if [ ${#selected[@]} -eq 0 ]; then

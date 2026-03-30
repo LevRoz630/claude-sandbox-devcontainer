@@ -58,7 +58,7 @@ if [ "$selection" = "all" ]; then
 else
     IFS=',' read -ra parts <<< "$selection"
     for part in "${parts[@]}"; do
-        part=$(echo "$part" | tr -d ' ')
+        part="${part// /}"
         if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
             start=${BASH_REMATCH[1]}
             end=${BASH_REMATCH[2]}
@@ -126,7 +126,98 @@ OUTPUT=$(bash "$TEST_TMP/parse-selection.sh" "4-7")
 EXPECTED=$(printf 'user/repo-d\nuser/repo-e')
 [[ "$OUTPUT" == "$EXPECTED" ]] && pass "Range '4-7' clips to valid repos (d,e)" || fail "Partial range: got '$OUTPUT'"
 
-section "4. Non-interactive Terminal Check"
+section "4. Word Search Filtering"
+
+# Create a mock script that tests word search + sub-selection flow
+cat > "$TEST_TMP/word-search.sh" << 'WORDSEARCH'
+#!/bin/bash
+set -uo pipefail
+
+declare -a repo_array=("alice/docker-api" "alice/docker-tools" "bob/react-app" "bob/node-server" "alice/My-Docker-Img")
+
+search_term="$1"
+sub_selection="$2"
+
+# Filter by case-insensitive substring
+search_lower="${search_term,,}"
+declare -a matched=()
+for repo in "${repo_array[@]}"; do
+    if [[ "${repo,,}" == *"$search_lower"* ]]; then
+        matched+=("$repo")
+    fi
+done
+
+if [ ${#matched[@]} -eq 0 ]; then
+    exit 0
+fi
+
+# Parse sub-selection against matched array
+parse_numeric_selection() {
+    local sel="$1"
+    shift
+    local -a arr=("$@")
+    local -a result=()
+
+    if [ "$sel" = "all" ]; then
+        result=("${arr[@]}")
+    else
+        IFS=',' read -ra parts <<< "$sel"
+        for part in "${parts[@]}"; do
+            part="${part// /}"
+            if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                local start=${BASH_REMATCH[1]}
+                local end=${BASH_REMATCH[2]}
+                for ((j=start; j<=end; j++)); do
+                    local idx=$((j - 1))
+                    if [ $idx -ge 0 ] && [ $idx -lt ${#arr[@]} ]; then
+                        result+=("${arr[$idx]}")
+                    fi
+                done
+            elif [[ "$part" =~ ^[0-9]+$ ]]; then
+                local idx=$((part - 1))
+                if [ $idx -ge 0 ] && [ $idx -lt ${#arr[@]} ]; then
+                    result+=("${arr[$idx]}")
+                fi
+            fi
+        done
+    fi
+
+    printf '%s\n' "${result[@]}"
+}
+
+parse_numeric_selection "$sub_selection" "${matched[@]}"
+WORDSEARCH
+chmod +x "$TEST_TMP/word-search.sh"
+
+# Test: search matches multiple, select one
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "docker" "1")
+[[ "$OUTPUT" == "alice/docker-api" ]] && pass "Search 'docker' + select '1' gives first match" || fail "Got '$OUTPUT'"
+
+# Test: search matches multiple, select all
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "docker" "all")
+EXPECTED=$(printf 'alice/docker-api\nalice/docker-tools\nalice/My-Docker-Img')
+[[ "$OUTPUT" == "$EXPECTED" ]] && pass "Search 'docker' + 'all' gives all 3 matches" || fail "Got '$OUTPUT'"
+
+# Test: case-insensitive search
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "DOCKER" "all")
+EXPECTED=$(printf 'alice/docker-api\nalice/docker-tools\nalice/My-Docker-Img')
+[[ "$OUTPUT" == "$EXPECTED" ]] && pass "Case-insensitive 'DOCKER' matches all docker repos" || fail "Got '$OUTPUT'"
+
+# Test: search matches owner name
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "bob" "all")
+EXPECTED=$(printf 'bob/react-app\nbob/node-server')
+[[ "$OUTPUT" == "$EXPECTED" ]] && pass "Search 'bob' matches owner in repo path" || fail "Got '$OUTPUT'"
+
+# Test: no matches
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "zzzzz" "all")
+[[ -z "$OUTPUT" ]] && pass "Search 'zzzzz' returns no matches" || fail "Got '$OUTPUT'"
+
+# Test: search + range sub-selection
+OUTPUT=$(bash "$TEST_TMP/word-search.sh" "docker" "1-2")
+EXPECTED=$(printf 'alice/docker-api\nalice/docker-tools')
+[[ "$OUTPUT" == "$EXPECTED" ]] && pass "Search 'docker' + range '1-2' selects first two matches" || fail "Got '$OUTPUT'"
+
+section "5. Non-interactive Terminal Check"
 
 # Piping stdin should trigger non-interactive error
 if ! gh auth status &>/dev/null; then
