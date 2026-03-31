@@ -38,6 +38,11 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
     apt-get update && apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Google Chrome (for Playwright browser automation)
+RUN wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && apt-get install -y /tmp/chrome.deb && \
+    rm /tmp/chrome.deb && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Poetry, renv, Claude Code
 RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install poetry
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
