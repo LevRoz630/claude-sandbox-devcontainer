@@ -24,7 +24,8 @@
         "ms-python.python",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "cweijan.office-viewer"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
