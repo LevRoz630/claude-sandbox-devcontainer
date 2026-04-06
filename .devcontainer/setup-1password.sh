@@ -135,8 +135,10 @@ load_credentials() {
     for var in "${CREDENTIAL_VARS[@]}"; do
         [ -n "${!var:-}" ] && printf 'export %s=%q\n' "$var" "${!var}" >> "$_creds"
     done
+    # Derived vars: gh CLI needs GH_TOKEN
+    [ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ] && printf 'export GH_TOKEN=%q\n' "$GITHUB_PERSONAL_ACCESS_TOKEN" >> "$_creds"
     chmod 600 "$_creds"
-    if ! grep -q '/run/credentials/op-env' /home/vscode/.bashrc 2>/dev/null; then
+    if ! grep -q '^\[ -f /run/credentials/op-env \]' /home/vscode/.bashrc 2>/dev/null; then
         echo '[ -f /run/credentials/op-env ] && source /run/credentials/op-env' >> /home/vscode/.bashrc
     fi
 }

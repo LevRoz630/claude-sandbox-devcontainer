@@ -5,6 +5,10 @@ set -uo pipefail
 CLONE_DIR="${1:-$HOME/repos}"
 mkdir -p "$CLONE_DIR"
 
+# Pick up credentials written by setup-1password (may not be in current shell yet)
+# shellcheck disable=SC1091
+[ -f /run/credentials/op-env ] && source /run/credentials/op-env
+
 # Check gh auth
 if ! gh auth status &>/dev/null; then
     echo "Error: GitHub CLI not authenticated. Run setup-1password or set GITHUB_PERSONAL_ACCESS_TOKEN."
