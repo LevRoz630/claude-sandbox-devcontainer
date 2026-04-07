@@ -30,6 +30,9 @@ RUN curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
     apt-get update && apt-get install -y 1password-cli && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Tailscale
+RUN curl -fsSL https://tailscale.com/install.sh | sh
+
 # Node.js 20
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
       | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg && \

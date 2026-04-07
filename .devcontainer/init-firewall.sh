@@ -115,6 +115,12 @@ ALLOWED_DOMAINS=(
     "cache.agilebits.com"
     "downloads.1password.com"
     "mcp.context7.com"
+    # Tailscale
+    "tailscale.com"
+    "pkgs.tailscale.com"
+    "login.tailscale.com"
+    "controlplane.tailscale.com"
+    "log.tailscale.io"
 )
 
 if [ -n "${FIREWALL_EXTRA_DOMAINS:-}" ]; then
