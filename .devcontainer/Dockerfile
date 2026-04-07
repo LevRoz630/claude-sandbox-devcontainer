@@ -31,7 +31,8 @@ RUN curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Tailscale
-RUN curl -fsSL https://tailscale.com/install.sh | sh
+RUN curl -fsSL https://tailscale.com/install.sh | sh && \
+    mkdir -p /var/lib/tailscale
 
 # Node.js 20
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -78,17 +79,17 @@ ENV CLAUDE_CONFIG_DIR=/home/vscode/.claude
 WORKDIR /workspace
 
 # Scripts (strip CRLF for Windows working trees)
-COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh clone-repos.sh lib.sh /usr/local/bin/
+COPY init-firewall.sh setup-env.sh setup-1password.sh setup-credentials.sh sandbox-status.sh clone-repos.sh lib.sh start-tailscale.sh /usr/local/bin/
 USER root
 RUN mv /usr/local/bin/lib.sh /usr/local/bin/devcontainer-lib.sh && \
     sed -i 's/\r$//' /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
         /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
         /usr/local/bin/sandbox-status.sh /usr/local/bin/clone-repos.sh \
-        /usr/local/bin/devcontainer-lib.sh && \
+        /usr/local/bin/devcontainer-lib.sh /usr/local/bin/start-tailscale.sh && \
     chmod +x /usr/local/bin/init-firewall.sh /usr/local/bin/setup-env.sh \
         /usr/local/bin/setup-1password.sh /usr/local/bin/setup-credentials.sh \
         /usr/local/bin/sandbox-status.sh /usr/local/bin/clone-repos.sh \
-        /usr/local/bin/devcontainer-lib.sh && \
+        /usr/local/bin/devcontainer-lib.sh /usr/local/bin/start-tailscale.sh && \
     printf '#!/bin/bash\nexec /usr/local/bin/setup-1password.sh --interactive "$@"\n' > /usr/local/bin/setup-1password && \
     printf '#!/bin/bash\nexec /usr/local/bin/sandbox-status.sh "$@"\n' > /usr/local/bin/sandbox-status && \
     printf '#!/bin/bash\nexec /usr/local/bin/clone-repos.sh "$@"\n' > /usr/local/bin/clone-repos && \
@@ -101,6 +102,8 @@ RUN rm -f /etc/sudoers.d/vscode && \
       "vscode ALL=(root) NOPASSWD: /usr/bin/chown -R vscode\:vscode /home/vscode/.config/op" \
       "vscode ALL=(root) NOPASSWD: /usr/bin/mkdir -p -m 700 /run/credentials" \
       "vscode ALL=(root) NOPASSWD: /usr/bin/chown vscode\:vscode /run/credentials" \
+      "vscode ALL=(root) NOPASSWD: /usr/local/bin/start-tailscale.sh" \
+      "vscode ALL=(root) NOPASSWD: /usr/bin/tailscale *" \
     > /etc/sudoers.d/firewall && \
     chmod 0440 /etc/sudoers.d/firewall
 
