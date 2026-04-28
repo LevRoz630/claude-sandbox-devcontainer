@@ -22,7 +22,7 @@ These hooks live in `.claude/hooks/` and get copied to `~/.claude/hooks/` on eve
 
 At session start, `learning-mode.sh` injects instructions into Claude's context: ask one question at a time, present trade-offs instead of choosing, insert `TODO(human)` markers for non-trivial logic, explain why after writing code. These rules also live in the global `CLAUDE.md` that `setup-env.sh` deploys to `~/.claude/CLAUDE.md`.
 
-The failure hooks reinforce this. After 5 consecutive failures, `failure-counter.sh` tells Claude to stop and discuss architecture. After 5 identical retries, `dedup-check.sh` blocks the call entirely. Both prevent the "try random things until something works" pattern.
+The failure hooks reinforce this. After 5 consecutive failures, `failure-counter.sh` tells Claude to stop and discuss architecture, preventing the "try random things until something works" pattern.
 
 ## Getting started
 

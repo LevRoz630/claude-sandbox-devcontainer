@@ -61,10 +61,6 @@ cat > /tmp/hooks-template.json << 'TEMPLATE'
       {
         "matcher": "Edit|Write",
         "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/plan-gate.sh"}]
-      },
-      {
-        "matcher": "",
-        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/dedup-check.sh"}]
       }
     ],
     "PostToolUse": [
