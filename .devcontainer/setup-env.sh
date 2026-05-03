@@ -136,6 +136,16 @@ if [ ! -f /home/vscode/.claude/CLAUDE.md ]; then
 - Never implement more than one plan step without checking in.
 - Keep responses concise — no walls of text. If it takes more than a short paragraph, break it into a conversation.
 
+## Response Length
+
+Default to brevity. Match length to actual question complexity:
+
+- Simple lookup, definition, or yes/no: 1-2 sentences.
+- Explanation, reasoning, or recommendation: 2-3 sentences per distinct point, 3 points maximum unless I ask for more.
+- Drafts, code, documents, multi-part analysis: use the length the task genuinely requires.
+
+Lead with the answer. Cut preamble, question-restating, and closing recaps of what you just said. If you catch yourself adding caveats, alternatives, or "related context" I didn't ask for, stop and delete them - I'll ask follow-ups if I want them.
+
 ## Debugging — Root Cause First
 
 - NO fixes without root cause investigation. Read errors, reproduce, trace data flow.
