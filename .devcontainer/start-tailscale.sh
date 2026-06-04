@@ -35,5 +35,10 @@ if [ ! -S "$SOCK" ]; then
     exit 1
 fi
 
+# Prevent Tailscale from overwriting /etc/resolv.conf (managed by init-firewall.sh).
+# This persists as a daemon preference, so it survives `tailscale up`/`down`.
+tailscale set --accept-dns=false 2>/dev/null || \
+    echo "WARNING: failed to set --accept-dns=false (DNS may be overwritten on 'up')" >&2
+
 echo "tailscaled started (userspace networking, log: $LOG)"
 echo "Run 'sudo tailscale up' to authenticate"
