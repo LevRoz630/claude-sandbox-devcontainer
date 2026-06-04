@@ -20,7 +20,6 @@ fi
 
 # Start daemon in background
 tailscaled \
-    --tun=userspace-networking \
     --state="$STATE" \
     --socket="$SOCK" \
     &>"$LOG" &

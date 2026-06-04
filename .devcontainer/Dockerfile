@@ -8,7 +8,7 @@ ARG CLAUDE_CODE_VERSION=latest
 # System packages, firewall, R, Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
   git gh less procps sudo fzf zsh man-db unzip gnupg2 \
-  jq nano vim curl wget \
+  jq nano vim curl wget mosh \
   # Firewall
   iptables ipset iproute2 dnsutils aggregate \
   # R compilation dependencies (R itself installed from CRAN repo below)

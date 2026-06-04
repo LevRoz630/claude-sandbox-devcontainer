@@ -39,6 +39,12 @@ iptables -A INPUT -p udp --sport 53 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 22 -j ACCEPT
 iptables -A INPUT -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT
+
+# Tailscale: WireGuard direct connections + full access to tailnet CGNAT range
+iptables -A OUTPUT -p udp --dport 41641 -j ACCEPT
+iptables -A INPUT  -p udp --sport 41641 -j ACCEPT
+iptables -A OUTPUT -d 100.64.0.0/10 -j ACCEPT
+iptables -A INPUT  -s 100.64.0.0/10 -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
@@ -130,7 +136,7 @@ if [ -n "${FIREWALL_EXTRA_DOMAINS:-}" ]; then
 fi
 
 for domain in "${ALLOWED_DOMAINS[@]}"; do
-    ips=$(dig +noall +answer A "$domain" | awk '$4 == "A" {print $5}')
+    ips=$(dig +noall +answer A "$domain" | awk '$4 == "A" {print $5}' || true)
     if [ -z "$ips" ]; then
         echo "WARNING: Failed to resolve $domain"
         continue
