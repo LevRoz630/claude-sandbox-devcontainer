@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq nano vim curl wget mosh \
   # Firewall
   iptables ipset iproute2 dnsutils aggregate \
-  # R compilation dependencies (R itself installed from CRAN repo below)
+  # R package compilation dependencies (R itself built from source below)
   libcurl4-openssl-dev libssl-dev libxml2-dev \
   libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
   libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
@@ -21,12 +21,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 python3-venv python3-pip pipx \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# R from CRAN (latest stable, newer than Ubuntu's r-base)
-RUN curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc \
-      | gpg --dearmor -o /usr/share/keyrings/cran-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/cran-archive-keyring.gpg] https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/" \
-      > /etc/apt/sources.list.d/cran.list && \
-    apt-get update && apt-get install -y r-base r-base-dev && \
+# R built from source, pinned to an exact version.
+# CRAN's noble apt repo only serves the latest 4.x, so pinning needs a source build.
+ARG R_VERSION=4.3.3
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential gfortran \
+      libreadline-dev libbz2-dev liblzma-dev libpcre2-dev zlib1g-dev libicu-dev && \
+    curl -fsSL -o /tmp/R.tar.gz \
+      "https://cloud.r-project.org/src/base/R-4/R-${R_VERSION}.tar.gz" && \
+    tar -xzf /tmp/R.tar.gz -C /tmp && \
+    cd "/tmp/R-${R_VERSION}" && \
+    ./configure --prefix=/usr/local --enable-R-shlib --without-x \
+      --with-recommended-packages=yes && \
+    make -j"$(nproc)" && make install && \
+    cd / && rm -rf "/tmp/R-${R_VERSION}" /tmp/R.tar.gz && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 1Password CLI
