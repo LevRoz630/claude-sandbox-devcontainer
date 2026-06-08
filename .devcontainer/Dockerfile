@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # R built from source, pinned to an exact version.
 # CRAN's noble apt repo only serves the latest 4.x, so pinning needs a source build.
-ARG R_VERSION=4.3.3
+ARG R_VERSION=4.5.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential gfortran \
       libreadline-dev libbz2-dev liblzma-dev libpcre2-dev zlib1g-dev libicu-dev && \
