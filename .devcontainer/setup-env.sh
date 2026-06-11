@@ -44,6 +44,18 @@ if [ -d /workspace/.claude/hooks ] && ls /workspace/.claude/hooks/*.sh >/dev/nul
     chmod +x /home/vscode/.claude/hooks/*.sh
 fi
 
+# Deploy humanizer skill globally (one-time; ~/.claude is a persistent volume)
+HUMANIZER_SKILL="/home/vscode/.claude/skills/humanizer/SKILL.md"
+if [ ! -f "$HUMANIZER_SKILL" ]; then
+    mkdir -p "$(dirname "$HUMANIZER_SKILL")"
+    if ! curl -fsL --connect-timeout 10 \
+        https://raw.githubusercontent.com/Aboudjem/humanizer-skill/main/skills/humanizer/SKILL.md \
+        -o "$HUMANIZER_SKILL"; then
+        rm -f "$HUMANIZER_SKILL"
+        echo "WARNING: humanizer skill download failed (will retry next start)"
+    fi
+fi
+
 # Hooks template — baseline hook config for this container
 cat > /tmp/hooks-template.json << 'TEMPLATE'
 {
