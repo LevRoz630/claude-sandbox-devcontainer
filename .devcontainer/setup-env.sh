@@ -158,6 +158,10 @@ Default to brevity. Match length to actual question complexity:
 
 Lead with the answer. Cut preamble, question-restating, and closing recaps of what you just said. If you catch yourself adding caveats, alternatives, or "related context" I didn't ask for, stop and delete them - I'll ask follow-ups if I want them.
 
+## Answering Questions — Hard Cap
+
+When I ask a question (as opposed to requesting code, drafts, or documents), prioritise avoiding information overload above all else. Limit every answer to 4 sentences maximum. Give me the direct answer and nothing more; I will ask follow-ups if I need detail.
+
 ## Debugging — Root Cause First
 
 - NO fixes without root cause investigation. Read errors, reproduce, trace data flow.
