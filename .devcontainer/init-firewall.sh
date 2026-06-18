@@ -112,6 +112,10 @@ ALLOWED_DOMAINS=(
     "files.pythonhosted.org"
     "bitbucket.org"
     "api.bitbucket.org"
+    # Git LFS object storage (objects are served from S3, not the git/web ranges)
+    "github-cloud.githubusercontent.com"
+    "github-cloud.s3.amazonaws.com"
+    "bbuseruploads.s3.amazonaws.com"
     "update.code.visualstudio.com"
     "marketplace.visualstudio.com"
     "vscode.blob.core.windows.net"

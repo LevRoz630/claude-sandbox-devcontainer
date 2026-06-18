@@ -7,7 +7,7 @@ ARG CLAUDE_CODE_VERSION=latest
 
 # System packages, firewall, R, Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  git gh less procps sudo fzf zsh man-db unzip gnupg2 \
+  git git-lfs gh less procps sudo fzf zsh man-db unzip gnupg2 \
   jq nano vim curl wget mosh \
   # Firewall
   iptables ipset iproute2 dnsutils aggregate \
@@ -19,7 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake libx11-dev pandoc \
   # Python
   python3 python3-venv python3-pip pipx \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && git lfs install --system
 
 # R built from source, pinned to an exact version.
 # CRAN's noble apt repo only serves the latest 4.x, so pinning needs a source build.
@@ -70,7 +71,8 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
     @modelcontextprotocol/server-github \
     @aashari/mcp-server-atlassian-confluence \
     @aashari/mcp-server-atlassian-jira \
-    @aashari/mcp-server-atlassian-bitbucket
+    @aashari/mcp-server-atlassian-bitbucket \
+ && claude update
 
 # Git delta
 ARG GIT_DELTA_VERSION=0.18.2
