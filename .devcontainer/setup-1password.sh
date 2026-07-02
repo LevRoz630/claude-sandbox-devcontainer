@@ -28,9 +28,9 @@ for arg in "$@"; do
     [ "$arg" = "--interactive" ] && INTERACTIVE=true
 done
 
-# Filesystem-only check — never invoke `op` here (newer CLIs open /dev/tty and hang)
+# Never invoke `op` here (hangs on /dev/tty); "accounts": null = stale config, no account
 op_has_account() {
-    [ -s "$OP_CONFIG_DIR/config" ]
+    jq -e '.accounts | length > 0' "$OP_CONFIG_DIR/config" >/dev/null 2>&1
 }
 
 op_authed() {
